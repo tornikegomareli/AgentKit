@@ -133,10 +133,18 @@ public final class AgentSession: @unchecked Sendable {
         case .token:
             break // UI handles token accumulation
 
-        case .toolCallStarted:
-            break
+        case .toolCallStarted(let name):
+            messages.append(.toolCall(name: name, params: [:]))
 
         case .toolCallCompleted(let name, let result):
+            // Update the last toolCall entry with the result params, then add result
+            if let lastIndex = messages.lastIndex(where: {
+                if case .toolCall(let n, _) = $0, n == name { return true }
+                return false
+            }) {
+                // Replace placeholder with actual params if available
+                messages[lastIndex] = .toolCall(name: name, params: [:])
+            }
             messages.append(.toolResult(name: name, result: result))
 
         case .responseComplete(let text):
@@ -219,6 +227,8 @@ public final class AgentSessionLegacy: @unchecked Sendable {
 
     private func handleEvent(_ event: AgentLoopEvent) {
         switch event {
+        case .toolCallStarted(let name):
+            messages.append(.toolCall(name: name, params: [:]))
         case .responseComplete(let text):
             messages.append(.assistant(text))
         case .toolCallCompleted(let name, let result):
