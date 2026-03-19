@@ -42,6 +42,12 @@ public enum LLMProvider: Sendable {
     ///   - host: Server URL. Defaults to http://localhost:11434.
     case ollama(model: ModelIdentifier.Ollama = .default, host: String = "http://localhost:11434")
 
+    /// Apple on-device model via Foundation Models (iOS 26+, macOS 26+).
+    ///
+    /// Runs fully on-device — no API key, no network required.
+    /// - Parameter model: A ``ModelIdentifier/Apple`` case. Defaults to `.general`.
+    case apple(model: ModelIdentifier.Apple = .default)
+
     /// A custom adapter. Use this for providers not built into AgentKit,
     /// or for testing with ``MockLLMAdapter``.
     case custom(any LLMAdapter)
@@ -75,6 +81,9 @@ public enum LLMProvider: Sendable {
 
         case .ollama(let model, let host):
             return OllamaAdapter(model: model.rawValue, host: host)
+
+        case .apple(let model):
+            return AppleAdapter(model: model)
 
         case .custom(let adapter):
             return adapter
