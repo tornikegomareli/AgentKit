@@ -89,29 +89,41 @@ enum OpenAISchema {
     ) -> JSONSchema? {
         guard !parameters.isEmpty else { return nil }
 
-        var properties: [String: AnyJSONDocument] = [:]
-        var required: [AnyJSONDocument] = []
+        // Build each property as a JSONSchema
+        var properties: [String: JSONSchema] = [:]
+        var requiredNames: [String] = []
 
         for param in parameters {
-            let propDict: [String: AnyJSONDocument] = [
-                "type": AnyJSONDocument(param.typeName as any JSONDocument),
-                "description": AnyJSONDocument(param.description as any JSONDocument)
-            ]
-            properties[param.name] = AnyJSONDocument(propDict as any JSONDocument)
+            properties[param.name] = JSONSchema(
+                .type(schemaType(for: param)),
+                .description(param.description)
+            )
             if param.isRequired {
-                required.append(AnyJSONDocument(param.name as any JSONDocument))
+                requiredNames.append(param.name)
             }
         }
 
-        var schema: [String: AnyJSONDocument] = [
-            "type": AnyJSONDocument("object" as any JSONDocument),
-            "properties": AnyJSONDocument(properties as any JSONDocument)
+        // Build the root object schema using the SDK's field helpers
+        var fields: [JSONSchemaField] = [
+            .type(.object),
+            .properties(properties),
         ]
-        if !required.isEmpty {
-            schema["required"] = AnyJSONDocument(required as any JSONDocument)
+        if !requiredNames.isEmpty {
+            fields.append(.required(requiredNames))
         }
 
-        return .object(schema)
+        return JSONSchema(fields: fields)
+    }
+
+    private static func schemaType(for param: ToolParameter) -> JSONSchemaInstanceType {
+        switch param {
+        case .string: return .string
+        case .int: return .integer
+        case .bool: return .boolean
+        case .object: return .object
+        case .array: return .array
+        case .number: return .number
+        }
     }
 
     private static func jsonString(from dict: SendableDictionary) -> String {
