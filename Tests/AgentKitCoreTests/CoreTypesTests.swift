@@ -111,4 +111,53 @@ struct CoreTypesTests {
         _ = Configuration(maxIterations: 1, contextBudgetFraction: 0.5)
         _ = Configuration(maxIterations: 100, contextBudgetFraction: 1.0)
     }
+
+    // MARK: - ModelIdentifier
+
+    @Test("Claude model IDs match official API identifiers")
+    func testClaudeModelIds() {
+        #expect(ModelIdentifier.Claude.sonnet.rawValue == "claude-sonnet-4-6")
+        #expect(ModelIdentifier.Claude.opus.rawValue == "claude-opus-4-6")
+        #expect(ModelIdentifier.Claude.haiku.rawValue == "claude-haiku-4-5")
+        #expect(ModelIdentifier.Claude.sonnet4_5.rawValue == "claude-sonnet-4-5")
+        #expect(ModelIdentifier.Claude.opus4.rawValue == "claude-opus-4-0")
+        #expect(ModelIdentifier.Claude.default == .sonnet)
+    }
+
+    @Test("OpenAI model IDs match official API identifiers")
+    func testOpenAIModelIds() {
+        #expect(ModelIdentifier.OpenAI.gpt5_4.rawValue == "gpt-5.4")
+        #expect(ModelIdentifier.OpenAI.gpt5_4Mini.rawValue == "gpt-5.4-mini")
+        #expect(ModelIdentifier.OpenAI.gpt5_4Nano.rawValue == "gpt-5.4-nano")
+        #expect(ModelIdentifier.OpenAI.gpt4o.rawValue == "gpt-4o")
+        #expect(ModelIdentifier.OpenAI.gpt4oMini.rawValue == "gpt-4o-mini")
+        #expect(ModelIdentifier.OpenAI.default == .gpt4o)
+    }
+
+    @Test("Groq model IDs match official API identifiers")
+    func testGroqModelIds() {
+        #expect(ModelIdentifier.Groq.llama3_3_70b.rawValue == "llama-3.3-70b-versatile")
+        #expect(ModelIdentifier.Groq.llama3_1_8b.rawValue == "llama-3.1-8b-instant")
+        #expect(ModelIdentifier.Groq.gptOss120b.rawValue == "openai/gpt-oss-120b")
+        #expect(ModelIdentifier.Groq.default == .llama3_3_70b)
+    }
+
+    @Test("Ollama model names match common pull names")
+    func testOllamaModelIds() {
+        #expect(ModelIdentifier.Ollama.llama3_1.rawValue == "llama3.1")
+        #expect(ModelIdentifier.Ollama.mistral.rawValue == "mistral")
+        #expect(ModelIdentifier.Ollama.default == .llama3_3)
+    }
+
+    @Test("ModelIdentifier.id returns the raw API string")
+    func testModelIdentifierDescription() {
+        let claude = ModelIdentifier.claude(.opus)
+        #expect(claude.id == "claude-opus-4-6")
+
+        let openai = ModelIdentifier.openAI(.gpt5_4)
+        #expect(openai.id == "gpt-5.4")
+
+        let custom = ModelIdentifier.custom("my-fine-tune-v2")
+        #expect(custom.id == "my-fine-tune-v2")
+    }
 }

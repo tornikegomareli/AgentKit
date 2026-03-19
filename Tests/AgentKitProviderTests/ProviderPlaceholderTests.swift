@@ -161,9 +161,37 @@ struct LLMProviderTests {
 
     @Test("Ollama provider creates OllamaAdapter")
     func testOllamaProvider() {
-        let provider = LLMProvider.ollama(model: "llama3.1")
+        let provider = LLMProvider.ollama(model: .llama3_1)
         let adapter = provider.adapter()
         #expect(adapter is OllamaAdapter)
+    }
+
+    @Test("Claude with specific model uses correct ID")
+    func testClaudeWithModel() {
+        let provider = LLMProvider.claude(apiKey: "test", model: .opus)
+        let adapter = provider.adapter()
+        #expect(adapter is ClaudeAdapter)
+    }
+
+    @Test("OpenAI with specific model uses correct ID")
+    func testOpenAIWithModel() {
+        let provider = LLMProvider.openai(apiKey: "test", model: .gpt5_4)
+        let adapter = provider.adapter()
+        #expect(adapter is OpenAIAdapter)
+    }
+
+    @Test("Groq with specific model uses correct ID")
+    func testGroqWithModel() {
+        let provider = LLMProvider.groq(apiKey: "test", model: .gptOss120b)
+        let adapter = provider.adapter()
+        #expect(adapter is OpenAIAdapter)
+    }
+
+    @Test("Custom model ID string works via claudeCustom")
+    func testCustomModelId() {
+        let provider = LLMProvider.claudeCustom(apiKey: "test", modelId: "claude-future-model")
+        let adapter = provider.adapter()
+        #expect(adapter is ClaudeAdapter)
     }
 
     @Test("AgentKit convenience initializer works with provider enum")
