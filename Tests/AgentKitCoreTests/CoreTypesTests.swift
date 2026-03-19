@@ -149,6 +149,13 @@ struct CoreTypesTests {
         #expect(ModelIdentifier.Ollama.default == .llama3_3)
     }
 
+    @Test("Apple model identifiers map to configuration names")
+    func testAppleModelIds() {
+        #expect(ModelIdentifier.Apple.general.rawValue == "apple-on-device-general")
+        #expect(ModelIdentifier.Apple.generalPermissive.rawValue == "apple-on-device-general-permissive")
+        #expect(ModelIdentifier.Apple.default == .general)
+    }
+
     @Test("ModelIdentifier.id returns the raw API string")
     func testModelIdentifierDescription() {
         let claude = ModelIdentifier.claude(.opus)
@@ -156,6 +163,9 @@ struct CoreTypesTests {
 
         let openai = ModelIdentifier.openAI(.gpt5_4)
         #expect(openai.id == "gpt-5.4")
+
+        let apple = ModelIdentifier.apple(.general)
+        #expect(apple.id == "apple-on-device-general")
 
         let custom = ModelIdentifier.custom("my-fine-tune-v2")
         #expect(custom.id == "my-fine-tune-v2")

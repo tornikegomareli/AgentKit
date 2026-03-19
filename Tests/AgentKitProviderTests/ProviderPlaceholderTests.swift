@@ -187,6 +187,23 @@ struct LLMProviderTests {
         #expect(adapter is OpenAIAdapter)
     }
 
+    @Test("Apple provider creates AppleAdapter")
+    func testAppleProvider() {
+        let provider = LLMProvider.apple()
+        let adapter = provider.adapter()
+        #expect(adapter is AppleAdapter)
+    }
+
+    @Test("Apple provider with permissive guardrails creates adapter")
+    func testApplePermissiveProvider() {
+        let provider = LLMProvider.apple(model: .generalPermissive)
+        let adapter = provider.adapter()
+        #expect(adapter is AppleAdapter)
+        if let apple = adapter as? AppleAdapter {
+            #expect(apple.model == .generalPermissive)
+        }
+    }
+
     @Test("Custom model ID string works via claudeCustom")
     func testCustomModelId() {
         let provider = LLMProvider.claudeCustom(apiKey: "test", modelId: "claude-future-model")
