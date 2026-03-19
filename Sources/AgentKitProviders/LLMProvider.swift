@@ -8,59 +8,88 @@ import AgentKitCore
 ///
 /// ## Example
 /// ```swift
-/// let adapter = LLMProvider.claude(apiKey: "sk-ant-...").adapter()
-/// let agent = AgentKit(adapter: adapter)
+/// let agent = AgentKit(provider: .claude(apiKey: "sk-ant-..."))
+/// let agent = AgentKit(provider: .claude(apiKey: key, model: .opus))
+/// let agent = AgentKit(provider: .openai(apiKey: key, model: .gpt5_4))
+/// let agent = AgentKit(provider: .groq(apiKey: key, model: .llama3_3_70b))
 /// ```
 public enum LLMProvider: Sendable {
     /// Anthropic Claude models.
+    ///
     /// - Parameters:
     ///   - apiKey: Your Anthropic API key.
-    ///   - model: Model identifier. Defaults to claude-3.7-sonnet-latest.
-    case claude(apiKey: String, model: String = "claude-3-7-sonnet-latest")
+    ///   - model: A ``ModelIdentifier/Claude`` case. Defaults to `.sonnet` (Claude Sonnet 4.6).
+    case claude(apiKey: String, model: ModelIdentifier.Claude = .default)
 
-    /// OpenAI models (GPT-4o, GPT-4, etc.).
+    /// OpenAI models.
+    ///
     /// - Parameters:
     ///   - apiKey: Your OpenAI API key.
-    ///   - model: Model identifier. Defaults to gpt-4o.
-    case openai(apiKey: String, model: String = "gpt-4o")
+    ///   - model: A ``ModelIdentifier/OpenAI`` case. Defaults to `.gpt4o`.
+    case openai(apiKey: String, model: ModelIdentifier.OpenAI = .default)
 
     /// Groq (OpenAI-compatible endpoint).
+    ///
     /// - Parameters:
     ///   - apiKey: Your Groq API key.
-    ///   - model: Model identifier. Defaults to llama-3.3-70b-versatile.
-    case groq(apiKey: String, model: String = "llama-3.3-70b-versatile")
+    ///   - model: A ``ModelIdentifier/Groq`` case. Defaults to `.llama3_3_70b`.
+    case groq(apiKey: String, model: ModelIdentifier.Groq = .default)
 
     /// Ollama local models.
+    ///
     /// - Parameters:
-    ///   - model: The Ollama model name (e.g. "llama3.1", "mistral").
+    ///   - model: A ``ModelIdentifier/Ollama`` case. Defaults to `.llama3_3`.
     ///   - host: Server URL. Defaults to http://localhost:11434.
-    case ollama(model: String, host: String = "http://localhost:11434")
+    case ollama(model: ModelIdentifier.Ollama = .default, host: String = "http://localhost:11434")
 
     /// A custom adapter. Use this for providers not built into AgentKit,
     /// or for testing with ``MockLLMAdapter``.
     case custom(any LLMAdapter)
 
+    /// Use a custom model ID string with a built-in provider.
+    ///
+    /// For models not yet in the enum (new releases, fine-tunes, etc.).
+    /// ```swift
+    /// .claudeCustom(apiKey: key, modelId: "claude-sonnet-5-0")
+    /// ```
+    case claudeCustom(apiKey: String, modelId: String)
+    case openaiCustom(apiKey: String, modelId: String)
+    case groqCustom(apiKey: String, modelId: String)
+    case ollamaCustom(modelId: String, host: String = "http://localhost:11434")
+
     /// Create a concrete ``LLMAdapter`` from this provider configuration.
     public func adapter() -> any LLMAdapter {
         switch self {
         case .claude(let apiKey, let model):
-            return ClaudeAdapter(apiKey: apiKey, model: model)
+            return ClaudeAdapter(apiKey: apiKey, model: model.rawValue)
 
         case .openai(let apiKey, let model):
-            return OpenAIAdapter(apiKey: apiKey, model: model)
+            return OpenAIAdapter(apiKey: apiKey, model: model.rawValue)
 
         case .groq(let apiKey, let model):
             return OpenAIAdapter(
                 apiKey: apiKey,
-                model: model,
+                model: model.rawValue,
                 host: "api.groq.com"
             )
 
         case .ollama(let model, let host):
-            return OllamaAdapter(model: model, host: host)
+            return OllamaAdapter(model: model.rawValue, host: host)
 
         case .custom(let adapter):
             return adapter
+
+        case .claudeCustom(let apiKey, let modelId):
+            return ClaudeAdapter(apiKey: apiKey, model: modelId)
+
+        case .openaiCustom(let apiKey, let modelId):
+            return OpenAIAdapter(apiKey: apiKey, model: modelId)
+
+        case .groqCustom(let apiKey, let modelId):
+            return OpenAIAdapter(apiKey: apiKey, model: modelId, host: "api.groq.com")
+
+        case .ollamaCustom(let modelId, let host):
+            return OllamaAdapter(model: modelId, host: host)
         }
     }
 }
@@ -74,6 +103,7 @@ extension AgentKit {
     ///
     /// ```swift
     /// let agent = AgentKit(provider: .claude(apiKey: "sk-ant-..."))
+    /// let agent = AgentKit(provider: .claude(apiKey: key, model: .opus))
     /// ```
     public convenience init(
         provider: LLMProvider,
