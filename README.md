@@ -13,7 +13,9 @@ AgentKit is a modular Swift Package that adds an agentic layer to your app — a
 ## Why AgentKit?
 
 - **10 lines to a working agent** — register tools, pick an LLM, drop in a chat view
-- **Zero lock-in** — swap Claude for GPT-4o for Gemini for on-device Apple models. Same code.
+- **Zero lock-in** — swap Claude for GPT-4o for Ollama for Apple on-device. Same code.
+- **6 providers** — Claude, OpenAI, Groq, Ollama, Apple Foundation Models, or bring your own
+- **Type-safe models** — no hardcoded strings. `ModelIdentifier` enums with exact API model IDs
 - **Modular** — import only what you need. Headless? Skip the UI. Custom UI? Skip the chat view.
 - **Swift-native** — async/await, actors, structured concurrency. No Combine, no callbacks.
 - **Testable** — every component has a mock. No network calls in tests.
@@ -81,27 +83,106 @@ for await event in session.events {
 
 ## Supported Providers
 
-| Provider | Enum | Model Default |
-|---|---|---|
-| **Claude** (Anthropic) | `.claude(apiKey:)` | claude-3.7-sonnet-latest |
-| **GPT-4o** (OpenAI) | `.openai(apiKey:)` | gpt-4o |
-| **Groq** | `.groq(apiKey:)` | llama-3.3-70b-versatile |
-| **Ollama** (local) | `.ollama(model:)` | — |
-| **Custom** | `.custom(adapter)` | — |
+| Provider | Enum | Default Model | Context Window |
+|---|---|---|---|
+| **Claude** (Anthropic) | `.claude(apiKey:)` | `.sonnet` (Claude Sonnet 4.6) | 1M tokens |
+| **OpenAI** | `.openai(apiKey:)` | `.gpt4o` (GPT-4o) | 128k tokens |
+| **Groq** | `.groq(apiKey:)` | `.llama3_3_70b` | 131k tokens |
+| **Ollama** (local) | `.ollama()` | `.llama3_3` | varies |
+| **Apple** (on-device) | `.apple()` | `.general` | ~4k tokens |
+| **Custom** | `.custom(adapter)` | — | — |
 
-Switch providers with one line. Your tools, state, and conversation history stay the same.
+### Type-Safe Model Selection
+
+Every provider has a `ModelIdentifier` enum — no hardcoded strings:
 
 ```swift
-// Cloud
+// Use the default model
 let agent = AgentKit(provider: .claude(apiKey: key))
 
-// Local
-let agent = AgentKit(provider: .ollama(model: "llama3.1"))
+// Pick a specific model
+let agent = AgentKit(provider: .claude(apiKey: key, model: .opus))
+let agent = AgentKit(provider: .openai(apiKey: key, model: .gpt5_4))
+let agent = AgentKit(provider: .groq(apiKey: key, model: .llama3_1_8b))
 
-// With offline fallback
+// Apple on-device (no API key needed)
+let agent = AgentKit(provider: .apple())
+
+// Custom model ID for new releases or fine-tunes
+let agent = AgentKit(provider: .claudeCustom(apiKey: key, modelId: "claude-future-model"))
+```
+
+### Available Models
+
+<details>
+<summary><strong>Claude</strong> (ModelIdentifier.Claude)</summary>
+
+| Case | API ID | Notes |
+|---|---|---|
+| `.opus` | `claude-opus-4-6` | Most intelligent, 1M context |
+| `.sonnet` | `claude-sonnet-4-6` | Best speed/intelligence (default) |
+| `.haiku` | `claude-haiku-4-5` | Fastest, 200k context |
+| `.sonnet4_5` | `claude-sonnet-4-5` | Previous gen sonnet |
+| `.opus4_5` | `claude-opus-4-5` | Previous gen opus |
+| `.opus4_1` | `claude-opus-4-1` | Extended thinking |
+| `.sonnet4` | `claude-sonnet-4-0` | Legacy |
+| `.opus4` | `claude-opus-4-0` | Legacy |
+
+</details>
+
+<details>
+<summary><strong>OpenAI</strong> (ModelIdentifier.OpenAI)</summary>
+
+| Case | API ID | Notes |
+|---|---|---|
+| `.gpt5_4` | `gpt-5.4` | Flagship, 1M context |
+| `.gpt5_4Mini` | `gpt-5.4-mini` | Faster, cheaper, 400k |
+| `.gpt5_4Nano` | `gpt-5.4-nano` | Cheapest, 400k |
+| `.gpt4o` | `gpt-4o` | Previous flagship (default) |
+| `.gpt4oMini` | `gpt-4o-mini` | Fast and affordable |
+| `.gpt4Turbo` | `gpt-4-turbo` | Legacy |
+
+</details>
+
+<details>
+<summary><strong>Groq</strong> (ModelIdentifier.Groq)</summary>
+
+| Case | API ID | Notes |
+|---|---|---|
+| `.llama3_3_70b` | `llama-3.3-70b-versatile` | Default, 131k |
+| `.llama3_1_8b` | `llama-3.1-8b-instant` | Fastest, 131k |
+| `.gptOss120b` | `openai/gpt-oss-120b` | Large open model |
+| `.gptOss20b` | `openai/gpt-oss-20b` | Smaller open model |
+| `.llama4Scout` | `meta-llama/llama-4-scout-17b-16e-instruct` | Preview |
+| `.qwen3_32b` | `qwen/qwen3-32b` | Preview |
+
+</details>
+
+<details>
+<summary><strong>Apple</strong> (ModelIdentifier.Apple)</summary>
+
+| Case | Config | Notes |
+|---|---|---|
+| `.general` | Standard guardrails | Default, ~4k context |
+| `.generalPermissive` | Relaxed guardrails | For content transformation |
+
+Requires iOS 26+ / macOS 26+. No API key. Fully on-device.
+
+</details>
+
+### Provider Switching & Offline Fallback
+
+```swift
+// Cloud primary, on-device fallback (airplane mode resilience)
 let agent = AgentKit(
     provider: .claude(apiKey: key),
-    fallbackProvider: .ollama(model: "llama3.1")
+    fallbackProvider: .apple()
+)
+
+// Local primary, cloud fallback
+let agent = AgentKit(
+    provider: .ollama(model: .mistral),
+    fallbackProvider: .openai(apiKey: key)
 )
 ```
 
@@ -112,7 +193,7 @@ Import only what you need:
 | Module | Import | What you get |
 |---|---|---|
 | **AgentKitCore** | `import AgentKitCore` | Agent loop, tool registry, state, session, protocols. Zero dependencies. |
-| **AgentKitProviders** | `import AgentKitProviders` | Claude, OpenAI, Groq, Ollama adapters + `LLMProvider` enum. |
+| **AgentKitProviders** | `import AgentKitProviders` | Claude, OpenAI, Groq, Ollama, Apple adapters + `LLMProvider` enum. |
 | **AgentKitChat** | `import AgentKitChat` | Drop-in `AgentChatView` + theming modifiers. |
 | **AgentKitMCP** | `import AgentKitMCP` | MCP bundle system for exposing system APIs as tools. |
 | **AgentKitDevTools** | `import AgentKitDevTools` | Token counter, event recorder for debugging. |
@@ -158,7 +239,7 @@ class MyStateProvider: AgentStateProvider {
     }
 }
 
-agent.state.setProvider(MyStateProvider())
+await agent.state.setProvider(MyStateProvider())
 ```
 
 ## Theming the Chat View
@@ -193,7 +274,7 @@ let agent = AgentKit(adapter: mock)
 Run the test suite:
 
 ```bash
-swift test                                    # All 48 tests
+swift test                                    # All 60 tests
 swift test --filter AgentKitCoreTests         # Core only
 swift test --filter AgentKitProviderTests     # Provider adapters
 swift test --filter AgentKitChatTests         # Chat UI
@@ -216,6 +297,7 @@ Key design decisions:
 - **`AgentSession` lives in Core**, not Chat — headless users never import SwiftUI
 - **`ToolRegistry` and `StateManager` are actors** — thread-safe by construction
 - **`LLMAdapter` is a public protocol** — implement your own for any provider
+- **`ModelIdentifier` enums** — type-safe model selection, no hardcoded strings
 - **AgentKitChat is optional** — build any UI you want on top of the event stream
 
 ## Requirements
@@ -223,6 +305,7 @@ Key design decisions:
 - Swift 5.9+
 - iOS 16+ / macOS 13+
 - iOS 17+ / macOS 14+ for `AgentChatView` (uses `@Observable`)
+- iOS 26+ / macOS 26+ for Apple on-device models (uses `FoundationModels`)
 
 ## License
 
