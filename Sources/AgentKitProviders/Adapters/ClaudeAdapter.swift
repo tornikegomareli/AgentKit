@@ -144,6 +144,10 @@ public final class ClaudeAdapter: LLMAdapter, @unchecked Sendable {
     private func buildSystemPrompt(context: AgentContext) -> String? {
         var parts: [String] = []
 
+        if let systemPrompt = context.systemPrompt {
+            parts.append(systemPrompt)
+        }
+
         if let screen = context.currentScreen {
             parts.append("The user is currently on the '\(screen)' screen.")
         }

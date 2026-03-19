@@ -64,8 +64,11 @@ public actor AgentLoopRunner {
                         logger.debug("Loop iteration \(iterations)/\(configuration.maxIterations)")
                     }
 
-                    // Pull current state
-                    let context = await stateManager.currentContext()
+                    // Pull current state and inject system prompt from configuration
+                    var context = await stateManager.currentContext()
+                    if context.systemPrompt == nil, let configPrompt = configuration.systemPrompt {
+                        context.systemPrompt = configPrompt
+                    }
                     let tools = await toolRegistry.allTools()
 
                     // Call LLM (with fallback on network failure)

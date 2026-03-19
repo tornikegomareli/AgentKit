@@ -162,6 +162,12 @@ public final class OpenAIAdapter: LLMAdapter, @unchecked Sendable {
     ) -> String? {
         var parts: [String] = []
 
+        // Developer's system prompt from Configuration (via context)
+        if let contextPrompt = context.systemPrompt {
+            parts.append(contextPrompt)
+        }
+
+        // Adapter-level base prompt (legacy, for direct adapter construction)
         if let base = basePrompt {
             parts.append(base)
         }

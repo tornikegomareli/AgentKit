@@ -76,6 +76,12 @@ public final class AppleAdapter: LLMAdapter, @unchecked Sendable {
     public func buildInstructions(tools: [AgentTool], context: AgentContext) -> String {
         var parts: [String] = []
 
+        // Developer's system prompt from Configuration (via context)
+        if let contextPrompt = context.systemPrompt {
+            parts.append(contextPrompt)
+        }
+
+        // Adapter-level prompt (legacy, for direct adapter construction)
         if let prompt = systemPrompt {
             parts.append(prompt)
         }

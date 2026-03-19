@@ -127,7 +127,12 @@ public final class OllamaAdapter: LLMAdapter, @unchecked Sendable {
         var ollamaMessages: [[String: Any]] = []
 
         // System message with context
-        var systemParts: [String] = ["You are a helpful assistant."]
+        var systemParts: [String] = []
+        if let systemPrompt = context.systemPrompt {
+            systemParts.append(systemPrompt)
+        } else {
+            systemParts.append("You are a helpful assistant.")
+        }
         if let screen = context.currentScreen {
             systemParts.append("The user is on the '\(screen)' screen.")
         }

@@ -6,6 +6,11 @@ import Foundation
 /// what properties are relevant, and any custom state your app wants to expose.
 /// Keep snapshots lightweight — they are serialized into the LLM prompt on every turn.
 public struct AgentContext: Sendable {
+    /// The system prompt that defines the agent's personality, role, and constraints.
+    /// This is the primary way developers configure agent behavior.
+    /// Passed as the system/instruction message to the LLM on every turn.
+    public var systemPrompt: String?
+
     /// The name or identifier of the screen the user is currently viewing.
     /// Helps the agent understand what actions are contextually relevant.
     public var currentScreen: String?
@@ -19,10 +24,12 @@ public struct AgentContext: Sendable {
     public var customState: SendableDictionary
 
     public init(
+        systemPrompt: String? = nil,
         currentScreen: String? = nil,
         userProperties: SendableDictionary = [:],
         customState: SendableDictionary = [:]
     ) {
+        self.systemPrompt = systemPrompt
         self.currentScreen = currentScreen
         self.userProperties = userProperties
         self.customState = customState
