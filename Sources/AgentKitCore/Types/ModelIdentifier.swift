@@ -137,6 +137,25 @@ public enum ModelIdentifier: Sendable, Equatable, CustomStringConvertible {
         public static var `default`: Ollama { .llama3_3 }
     }
 
+    // MARK: - Apple (on-device)
+
+    /// Apple Foundation Models identifiers (iOS 26+, macOS 26+).
+    ///
+    /// Apple's on-device models don't have named model IDs — you select
+    /// a use case and guardrail level. These enum cases map to those configurations.
+    public enum Apple: String, Sendable, CaseIterable {
+        /// General-purpose on-device model with standard content safety.
+        /// ~4096 token context window. Runs fully on-device, no network needed.
+        case general = "apple-on-device-general"
+
+        /// General-purpose model with relaxed guardrails for content transformation.
+        /// Use for rewriting, summarization, and creative tasks.
+        case generalPermissive = "apple-on-device-general-permissive"
+
+        /// The default Apple on-device configuration.
+        public static var `default`: Apple { .general }
+    }
+
     // MARK: - Description
 
     public var description: String {
@@ -145,6 +164,7 @@ public enum ModelIdentifier: Sendable, Equatable, CustomStringConvertible {
         case .openAI(let m): return m.rawValue
         case .groq(let m): return m.rawValue
         case .ollama(let m): return m.rawValue
+        case .apple(let m): return m.rawValue
         case .custom(let id): return id
         }
     }
@@ -156,5 +176,6 @@ public enum ModelIdentifier: Sendable, Equatable, CustomStringConvertible {
     case openAI(OpenAI)
     case groq(Groq)
     case ollama(Ollama)
+    case apple(Apple)
     case custom(String)
 }
