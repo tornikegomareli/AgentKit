@@ -19,7 +19,7 @@ swift test --filter AgentKitChatTests      # Chat UI tests only
 | Target | Path | Dependencies | Purpose |
 |---|---|---|---|
 | AgentKitCore | Sources/AgentKitCore | None | Agent loop, tool registry, state, session, protocols |
-| AgentKitProviders | Sources/AgentKitProviders | Core + SwiftAnthropic + MacPaw/OpenAI | LLM adapters for Claude, OpenAI, Gemini, Apple, Ollama |
+| AgentKitProviders | Sources/AgentKitProviders | Core + SwiftAnthropic + MacPaw/OpenAI | LLM adapters (Claude, OpenAI, Groq, Ollama) + schema translation |
 | AgentKitChat | Sources/AgentKitChat | Core only | Drop-in SwiftUI chat view and theming |
 | AgentKitMCP | Sources/AgentKitMCP | Core only | MCP client + system API bundles |
 | AgentKitDevTools | Sources/AgentKitDevTools | Core only | Debug inspector, loop replay, token counter |
@@ -54,3 +54,8 @@ swift test --filter AgentKitChatTests      # Chat UI tests only
 - `LLMAdapter` protocol is public so consumers can implement `.custom()` providers
 - `AgentKitChat` is a separate target from Core — UI is always optional
 - `SendableDictionary` wraps `[String: Any]` for Sendable compliance
+- Schema translation layers live in `AgentKitProviders/SchemaTranslation/`
+- `LLMProvider` enum provides convenience `AgentKit(provider:)` initializer
+- `ChatMessageViewModel` bridges `AgentSession` events to renderable `ChatItem` list
+- `MCPBundle` protocol enables custom system API tool bundles
+- `ChatConfiguration` is injected via SwiftUI environment for composable theming

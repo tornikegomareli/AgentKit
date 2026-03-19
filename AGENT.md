@@ -17,10 +17,14 @@ import AgentKitCore
 import AgentKitProviders
 import AgentKitChat
 
-let agent = AgentKit(adapter: claudeAdapter)
+let agent = AgentKit(provider: .claude(apiKey: "sk-ant-..."))
 
-await agent.tools.register("getOrderStatus") { params in
-    return await orderService.status(id: params["orderId"] as! String)
+await agent.tools.register(
+    name: "getOrderStatus",
+    description: "Look up order status by ID",
+    parameters: [.string("orderId", description: "The order ID", required: true)]
+) { params in
+    return await orderService.status(id: params["orderId"] as? String ?? "")
 }
 
 // In your SwiftUI view:
@@ -83,6 +87,6 @@ The event stream type. Cases: `.token`, `.toolCallStarted`, `.toolCallCompleted`
 | Phase | Focus | Status |
 |---|---|---|
 | Phase 1 | Core types, agent loop, tool registry, state, session, mocks, tests | Complete |
-| Phase 2 | All 5 LLM adapters, schema translation, provider tests | Planned |
-| Phase 3 | AgentKitChat UI, MCP bundles, DevTools | Planned |
-| Phase 4 | DocC docs, example apps, README, CHANGELOG, polish | Planned |
+| Phase 2 | Claude, OpenAI, Groq, Ollama adapters, schema translation, provider tests | Complete |
+| Phase 3 | AgentKitChat UI, MCP bundles, DevTools | Complete |
+| Phase 4 | README, CHANGELOG, LICENSE, docs polish | Complete |
