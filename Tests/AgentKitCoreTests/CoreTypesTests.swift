@@ -1,0 +1,114 @@
+import Testing
+import Foundation
+@testable import AgentKitCore
+
+@Suite("Core Types Tests")
+struct CoreTypesTests {
+
+    // MARK: - ToolParameter
+
+    @Test("ToolParameter exposes name, description, required, and typeName")
+    func testToolParameterProperties() {
+        let param = ToolParameter.string("query", description: "Search term", required: true)
+        #expect(param.name == "query")
+        #expect(param.description == "Search term")
+        #expect(param.isRequired == true)
+        #expect(param.typeName == "string")
+
+        let optionalInt = ToolParameter.int("limit", description: "Max results", required: false)
+        #expect(optionalInt.isRequired == false)
+        #expect(optionalInt.typeName == "integer")
+    }
+
+    @Test("All ToolParameter cases have correct type names")
+    func testAllTypeNames() {
+        #expect(ToolParameter.string("a", description: "").typeName == "string")
+        #expect(ToolParameter.int("a", description: "").typeName == "integer")
+        #expect(ToolParameter.bool("a", description: "").typeName == "boolean")
+        #expect(ToolParameter.object("a", description: "").typeName == "object")
+        #expect(ToolParameter.array("a", description: "").typeName == "array")
+        #expect(ToolParameter.number("a", description: "").typeName == "number")
+    }
+
+    // MARK: - AgentMessage
+
+    @Test("AgentMessage description is human-readable")
+    func testAgentMessageDescription() {
+        let user = AgentMessage.user("Hello")
+        #expect(user.description.contains("[user]"))
+        #expect(user.description.contains("Hello"))
+
+        let assistant = AgentMessage.assistant("Hi there")
+        #expect(assistant.description.contains("[assistant]"))
+
+        let toolCall = AgentMessage.toolCall(name: "search", params: SendableDictionary(["q": "test"]))
+        #expect(toolCall.description.contains("[tool_call]"))
+        #expect(toolCall.description.contains("search"))
+    }
+
+    // MARK: - AgentError
+
+    @Test("AgentError cases have meaningful descriptions")
+    func testAgentErrorDescriptions() {
+        let errors: [(AgentError, String)] = [
+            (.providerUnavailable("no API"), "Provider unavailable"),
+            (.toolNotFound("missing"), "Tool not found: missing"),
+            (.contextWindowExceeded, "Context window exceeded"),
+            (.networkUnavailable, "Network unavailable"),
+            (.maxIterationsExceeded, "Max iterations exceeded"),
+            (.cancelled, "Operation cancelled"),
+        ]
+
+        for (error, expectedSubstring) in errors {
+            #expect(error.description.contains(expectedSubstring))
+        }
+    }
+
+    // MARK: - SendableDictionary
+
+    @Test("SendableDictionary supports subscript access")
+    func testSendableDictionary() {
+        var dict = SendableDictionary(["key": "value"])
+        #expect(dict["key"] as? String == "value")
+        #expect(dict["missing"] == nil)
+
+        dict["new"] = 42
+        #expect(dict["new"] as? Int == 42)
+        #expect(dict.isEmpty == false)
+    }
+
+    @Test("SendableDictionary supports dictionary literal init")
+    func testSendableDictionaryLiteral() {
+        let dict: SendableDictionary = ["a": 1, "b": "two"]
+        #expect(dict["a"] as? Int == 1)
+        #expect(dict["b"] as? String == "two")
+    }
+
+    // MARK: - AgentContext
+
+    @Test("AgentContext default initializer creates empty context")
+    func testDefaultContext() {
+        let context = AgentContext()
+        #expect(context.currentScreen == nil)
+        #expect(context.userProperties.isEmpty)
+        #expect(context.customState.isEmpty)
+    }
+
+    // MARK: - Configuration
+
+    @Test("Configuration default values are sensible")
+    func testDefaultConfiguration() {
+        let config = Configuration.default
+        #expect(config.maxIterations == 10)
+        #expect(config.contextBudgetFraction == 0.8)
+        #expect(config.systemPrompt == nil)
+        #expect(config.loggingEnabled == false)
+    }
+
+    @Test("Configuration rejects invalid values")
+    func testConfigurationValidation() {
+        // These should not crash — valid values
+        _ = Configuration(maxIterations: 1, contextBudgetFraction: 0.5)
+        _ = Configuration(maxIterations: 100, contextBudgetFraction: 1.0)
+    }
+}
