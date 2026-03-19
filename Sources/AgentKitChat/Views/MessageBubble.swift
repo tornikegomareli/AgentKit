@@ -6,6 +6,7 @@ import AgentKitCore
 struct MessageBubble: View {
     let item: ChatItem
     @Environment(\.chatConfiguration) private var config
+    @State private var showCopied = false
 
     var body: some View {
         HStack(alignment: .top, spacing: 8) {
@@ -17,11 +18,29 @@ struct MessageBubble: View {
                 Spacer(minLength: 60)
             }
 
-            contentView
-                .padding(.horizontal, 14)
-                .padding(.vertical, 10)
-                .background(bubbleBackground)
-                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            VStack(alignment: item.role == .user ? .trailing : .leading, spacing: 4) {
+                contentView
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 10)
+                    .background(bubbleBackground)
+                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+
+                // Copy button for assistant and error messages
+                if item.role == .assistant || item.role == .error {
+                    Button {
+                        copyToClipboard(item.content)
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: showCopied ? "checkmark" : "doc.on.doc")
+                            Text(showCopied ? "Copied" : "Copy")
+                        }
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.leading, 4)
+                }
+            }
 
             if item.role == .assistant || item.role == .error {
                 Spacer(minLength: 60)
@@ -82,6 +101,24 @@ struct MessageBubble: View {
             return AnyShapeStyle(Color.red.opacity(0.1))
         case .toolCall:
             return AnyShapeStyle(Color.clear)
+        }
+    }
+
+    private func copyToClipboard(_ text: String) {
+        #if canImport(UIKit)
+        UIPasteboard.general.string = text
+        #elseif canImport(AppKit)
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(text, forType: .string)
+        #endif
+
+        withAnimation {
+            showCopied = true
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+            withAnimation {
+                showCopied = false
+            }
         }
     }
 }
