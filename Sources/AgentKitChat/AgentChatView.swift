@@ -62,7 +62,15 @@ public struct AgentChatView: View {
                             switch item.role {
                             case .toolCall:
                                 if config.showToolCalls {
-                                    ToolCallRow(item: item)
+                                    if item.toolState == .pendingConfirmation {
+                                        ToolConfirmationCard(
+                                            item: item,
+                                            onApprove: { viewModel.approve($0) },
+                                            onReject: { viewModel.reject($0) }
+                                        )
+                                    } else {
+                                        ToolCallRow(item: item)
+                                    }
                                 }
                             default:
                                 MessageBubble(item: item)

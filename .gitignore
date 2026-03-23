@@ -41,6 +41,7 @@ Thumbs.db
 .env.*
 *.key
 credentials.json
+APIKeys.swift
 
 # Build artifacts
 DerivedData/

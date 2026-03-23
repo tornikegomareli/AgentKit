@@ -86,9 +86,43 @@ public final class ChatMessageViewModel {
             streamingText = ""
             items.append(ChatItem(role: .assistant, content: text))
 
+        case .toolConfirmationRequired(let pending):
+            items.append(ChatItem(
+                role: .toolCall,
+                content: pending.displayMessage ?? "Confirm: \(pending.toolName)",
+                toolState: .pendingConfirmation,
+                pendingConfirmation: pending
+            ))
+
         case .error(let error):
             items.append(ChatItem(role: .error, content: error.description))
         }
+    }
+
+    /// Approve a pending tool confirmation, allowing it to execute.
+    @MainActor
+    public func approve(_ id: UUID) {
+        if let index = items.lastIndex(where: { $0.pendingConfirmation?.id == id }) {
+            items[index] = ChatItem(
+                role: .toolCall,
+                content: items[index].content,
+                toolState: .running
+            )
+        }
+        session.approve(id)
+    }
+
+    /// Reject a pending tool confirmation. The LLM receives a "declined" result.
+    @MainActor
+    public func reject(_ id: UUID) {
+        if let index = items.lastIndex(where: { $0.pendingConfirmation?.id == id }) {
+            items[index] = ChatItem(
+                role: .toolCall,
+                content: items[index].content,
+                toolState: .rejected
+            )
+        }
+        session.reject(id)
     }
 
     @MainActor
@@ -122,17 +156,23 @@ public struct ChatItem: Identifiable, Sendable {
     public enum ToolState: Sendable {
         case running
         case completed
+        case pendingConfirmation
+        case rejected
     }
+
+    public var pendingConfirmation: PendingToolConfirmation?
 
     public init(
         role: Role,
         content: String,
         toolResult: String? = nil,
-        toolState: ToolState? = nil
+        toolState: ToolState? = nil,
+        pendingConfirmation: PendingToolConfirmation? = nil
     ) {
         self.role = role
         self.content = content
         self.toolResult = toolResult
         self.toolState = toolState
+        self.pendingConfirmation = pendingConfirmation
     }
 }
