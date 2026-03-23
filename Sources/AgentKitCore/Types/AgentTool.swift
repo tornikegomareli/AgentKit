@@ -28,17 +28,20 @@ public struct AgentTool: Sendable {
     public let name: String
     public let description: String
     public let parameters: [ToolParameter]
+    public let confirmation: ToolConfirmationPolicy
     public let handler: @Sendable (SendableDictionary) async throws -> Any
 
     public init(
         name: String,
         description: String,
         parameters: [ToolParameter] = [],
+        confirmation: ToolConfirmationPolicy = .none,
         handler: @escaping @Sendable (SendableDictionary) async throws -> Any
     ) {
         self.name = name
         self.description = description
         self.parameters = parameters
+        self.confirmation = confirmation
         self.handler = handler
     }
 }

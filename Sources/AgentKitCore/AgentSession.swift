@@ -39,9 +39,13 @@ public final class AgentSession: @unchecked Sendable {
     /// The most recent error, if any.
     public private(set) var lastError: AgentError?
 
+    /// Tool calls currently awaiting user approval.
+    public private(set) var pendingConfirmations: [PendingToolConfirmation] = []
+
     // MARK: - Private
 
     private let loopRunner: AgentLoopRunner
+    private let confirmationGate: ToolConfirmationGate
     private let logger = Logger(subsystem: "com.agentkit", category: "AgentSession")
     private var currentTask: Task<Void, Never>?
 
@@ -52,8 +56,9 @@ public final class AgentSession: @unchecked Sendable {
     /// The async stream of events for the current or most recent turn.
     public private(set) var events: AsyncStream<AgentLoopEvent>
 
-    public init(loopRunner: AgentLoopRunner) {
+    public init(loopRunner: AgentLoopRunner, confirmationGate: ToolConfirmationGate = ToolConfirmationGate()) {
         self.loopRunner = loopRunner
+        self.confirmationGate = confirmationGate
         var continuation: AsyncStream<AgentLoopEvent>.Continuation!
         self.events = AsyncStream { continuation = $0 }
         self.eventContinuation = continuation
@@ -109,11 +114,29 @@ public final class AgentSession: @unchecked Sendable {
         }
     }
 
+    /// Approve a pending tool confirmation, allowing the tool to execute.
+    ///
+    /// - Parameter id: The ``PendingToolConfirmation/id`` to approve.
+    public func approve(_ id: UUID) {
+        pendingConfirmations.removeAll { $0.id == id }
+        Task { await confirmationGate.resolve(id: id, decision: .approved) }
+    }
+
+    /// Reject a pending tool confirmation. The LLM will receive a "declined" result.
+    ///
+    /// - Parameter id: The ``PendingToolConfirmation/id`` to reject.
+    public func reject(_ id: UUID) {
+        pendingConfirmations.removeAll { $0.id == id }
+        Task { await confirmationGate.resolve(id: id, decision: .rejected) }
+    }
+
     /// Cancel the current agent turn.
     public func cancel() {
         currentTask?.cancel()
         currentTask = nil
         isProcessing = false
+        pendingConfirmations.removeAll()
+        Task { await confirmationGate.cancelAll() }
     }
 
     /// Clear all conversation history and start fresh.
@@ -121,6 +144,7 @@ public final class AgentSession: @unchecked Sendable {
         cancel()
         messages.removeAll()
         lastError = nil
+        pendingConfirmations.removeAll()
     }
 
     // MARK: - Private
@@ -151,6 +175,9 @@ public final class AgentSession: @unchecked Sendable {
             messages.append(.assistant(text))
             isProcessing = false
 
+        case .toolConfirmationRequired(let pending):
+            pendingConfirmations.append(pending)
+
         case .error(let error):
             lastError = error
             isProcessing = false
@@ -171,17 +198,30 @@ public final class AgentSession: @unchecked Sendable {
 public final class AgentSessionLegacy: @unchecked Sendable {
     public private(set) var messages: [AgentMessage] = []
     public private(set) var isProcessing: Bool = false
+    public private(set) var pendingConfirmations: [PendingToolConfirmation] = []
 
     private let loopRunner: AgentLoopRunner
+    private let confirmationGate: ToolConfirmationGate
     private var currentTask: Task<Void, Never>?
     private var eventContinuation: AsyncStream<AgentLoopEvent>.Continuation?
     public private(set) var events: AsyncStream<AgentLoopEvent>
 
-    public init(loopRunner: AgentLoopRunner) {
+    public init(loopRunner: AgentLoopRunner, confirmationGate: ToolConfirmationGate = ToolConfirmationGate()) {
         self.loopRunner = loopRunner
+        self.confirmationGate = confirmationGate
         var continuation: AsyncStream<AgentLoopEvent>.Continuation!
         self.events = AsyncStream { continuation = $0 }
         self.eventContinuation = continuation
+    }
+
+    public func approve(_ id: UUID) {
+        pendingConfirmations.removeAll { $0.id == id }
+        Task { await confirmationGate.resolve(id: id, decision: .approved) }
+    }
+
+    public func reject(_ id: UUID) {
+        pendingConfirmations.removeAll { $0.id == id }
+        Task { await confirmationGate.resolve(id: id, decision: .rejected) }
     }
 
     public func send(_ text: String) {
@@ -233,6 +273,8 @@ public final class AgentSessionLegacy: @unchecked Sendable {
             messages.append(.assistant(text))
         case .toolCallCompleted(let name, let result):
             messages.append(.toolResult(name: name, result: result))
+        case .toolConfirmationRequired(let pending):
+            pendingConfirmations.append(pending)
         default:
             break
         }

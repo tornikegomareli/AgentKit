@@ -67,27 +67,31 @@ public final class AgentKit: Sendable {
     /// - Returns: An ``AgentSession`` (iOS 17+) that you can send messages to.
     @available(iOS 17.0, macOS 14.0, *)
     public func startSession() -> AgentSession {
+        let gate = ToolConfirmationGate()
         let runner = AgentLoopRunner(
             adapter: adapter,
             fallbackAdapter: fallbackAdapter,
             toolRegistry: tools,
             stateManager: state,
-            configuration: configuration
+            configuration: configuration,
+            confirmationGate: gate
         )
-        return AgentSession(loopRunner: runner)
+        return AgentSession(loopRunner: runner, confirmationGate: gate)
     }
 
     /// Start a new conversation session for iOS 16.
     ///
     /// Uses ``AgentSessionLegacy`` which does not require @Observable.
     public func startLegacySession() -> AgentSessionLegacy {
+        let gate = ToolConfirmationGate()
         let runner = AgentLoopRunner(
             adapter: adapter,
             fallbackAdapter: fallbackAdapter,
             toolRegistry: tools,
             stateManager: state,
-            configuration: configuration
+            configuration: configuration,
+            confirmationGate: gate
         )
-        return AgentSessionLegacy(loopRunner: runner)
+        return AgentSessionLegacy(loopRunner: runner, confirmationGate: gate)
     }
 }

@@ -43,17 +43,21 @@ public actor ToolRegistry {
     ///   - description: Plain-English description of what the tool does and when to use it.
     ///     This text is passed directly to the LLM — quality matters.
     ///   - parameters: Typed parameter definitions. Omit for zero-parameter tools.
+    ///   - confirmation: Whether the tool requires user approval before execution.
+    ///     Defaults to `.none` (execute immediately).
     ///   - handler: Async closure executed when the agent calls this tool.
     public func register(
         name: String,
         description: String,
         parameters: [ToolParameter] = [],
+        confirmation: ToolConfirmationPolicy = .none,
         handler: @escaping @Sendable (SendableDictionary) async throws -> Any
     ) {
         let tool = AgentTool(
             name: name,
             description: description,
             parameters: parameters,
+            confirmation: confirmation,
             handler: handler
         )
         tools[name] = tool

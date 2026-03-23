@@ -19,6 +19,7 @@ public actor AgentLoopRunner {
     private let toolRegistry: ToolRegistry
     private let stateManager: StateManager
     private let configuration: Configuration
+    private let confirmationGate: ToolConfirmationGate
     private let logger = Logger(subsystem: "com.agentkit", category: "AgentLoop")
 
     public init(
@@ -26,13 +27,15 @@ public actor AgentLoopRunner {
         fallbackAdapter: (any LLMAdapter)? = nil,
         toolRegistry: ToolRegistry,
         stateManager: StateManager,
-        configuration: Configuration = .default
+        configuration: Configuration = .default,
+        confirmationGate: ToolConfirmationGate = ToolConfirmationGate()
     ) {
         self.adapter = adapter
         self.fallbackAdapter = fallbackAdapter
         self.toolRegistry = toolRegistry
         self.stateManager = stateManager
         self.configuration = configuration
+        self.confirmationGate = confirmationGate
     }
 
     /// Run the agent loop for a user message.
@@ -48,6 +51,7 @@ public actor AgentLoopRunner {
         let toolRegistry = self.toolRegistry
         let stateManager = self.stateManager
         let configuration = self.configuration
+        let confirmationGate = self.confirmationGate
         let logger = self.logger
 
         return AsyncThrowingStream { continuation in
@@ -118,8 +122,37 @@ public actor AgentLoopRunner {
                                 continuation.yield(.toolCallStarted(name: name))
 
                             case .toolCallCompleted(let name, let params):
-                                // Execute the tool
                                 let paramsDict = parseToolParams(params)
+
+                                // Check if this tool requires user confirmation
+                                let tool = await toolRegistry.tool(named: name)
+                                let policy = tool?.confirmation ?? .none
+
+                                if policy.requiresConfirmation {
+                                    let pending = PendingToolConfirmation(
+                                        toolName: name,
+                                        parameters: paramsDict,
+                                        displayMessage: policy.buildMessage(for: paramsDict),
+                                        requiresBiometric: policy.requiresBiometric
+                                    )
+                                    // Notify the UI that confirmation is needed
+                                    continuation.yield(.toolConfirmationRequired(pending))
+
+                                    // SUSPEND here until user approves or rejects
+                                    let decision = await confirmationGate.awaitDecision(for: pending)
+
+                                    if decision == .rejected {
+                                        let declinedResult = "Tool call declined by user."
+                                        continuation.yield(.toolCallCompleted(name: name, result: declinedResult))
+                                        currentMessages.append(.toolCall(name: name, params: paramsDict))
+                                        currentMessages.append(.toolResult(name: name, result: declinedResult))
+                                        shouldContinue = true
+                                        continue
+                                    }
+                                    // If approved, fall through to execute
+                                }
+
+                                // Execute the tool
                                 do {
                                     let result = try await toolRegistry.execute(
                                         name: name,
@@ -143,6 +176,10 @@ public actor AgentLoopRunner {
                                 continuation.yield(.responseComplete(text))
                                 continuation.finish()
                                 return
+
+                            case .toolConfirmationRequired:
+                                // This event is only emitted by the loop itself, never by adapters
+                                break
 
                             case .error(let agentError):
                                 continuation.yield(.error(agentError))

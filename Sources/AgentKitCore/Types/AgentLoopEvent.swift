@@ -21,6 +21,10 @@ public enum AgentLoopEvent: Sendable {
     /// This is the terminal event for a single reasoning turn.
     case responseComplete(String)
 
+    /// A tool call requires user confirmation before it can execute.
+    /// The loop is paused until ``AgentSession/approve(_:)`` or ``AgentSession/reject(_:)`` is called.
+    case toolConfirmationRequired(PendingToolConfirmation)
+
     /// An error occurred during the agent loop.
     case error(AgentError)
 }
@@ -34,6 +38,8 @@ extension AgentLoopEvent: CustomStringConvertible {
             return "[tool_start] \(name)"
         case .toolCallCompleted(let name, let result):
             return "[tool_done] \(name) -> \(result)"
+        case .toolConfirmationRequired(let pending):
+            return "[confirm] \(pending.toolName) awaiting approval"
         case .responseComplete(let text):
             return "[complete] \(text.prefix(80))..."
         case .error(let error):
