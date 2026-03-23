@@ -134,21 +134,6 @@ struct CoreTypesTests {
         #expect(ModelIdentifier.OpenAI.default == .gpt4o)
     }
 
-    @Test("Groq model IDs match official API identifiers")
-    func testGroqModelIds() {
-        #expect(ModelIdentifier.Groq.llama3_3_70b.rawValue == "llama-3.3-70b-versatile")
-        #expect(ModelIdentifier.Groq.llama3_1_8b.rawValue == "llama-3.1-8b-instant")
-        #expect(ModelIdentifier.Groq.gptOss120b.rawValue == "openai/gpt-oss-120b")
-        #expect(ModelIdentifier.Groq.default == .llama3_3_70b)
-    }
-
-    @Test("Ollama model names match common pull names")
-    func testOllamaModelIds() {
-        #expect(ModelIdentifier.Ollama.llama3_1.rawValue == "llama3.1")
-        #expect(ModelIdentifier.Ollama.mistral.rawValue == "mistral")
-        #expect(ModelIdentifier.Ollama.default == .llama3_3)
-    }
-
     @Test("Apple model identifiers map to configuration names")
     func testAppleModelIds() {
         #expect(ModelIdentifier.Apple.general.rawValue == "apple-on-device-general")

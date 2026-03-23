@@ -19,7 +19,7 @@ swift test --filter AgentKitChatTests      # Chat UI tests only
 | Target | Path | Dependencies | Purpose |
 |---|---|---|---|
 | AgentKitCore | Sources/AgentKitCore | None | Agent loop, tool registry, state, session, protocols |
-| AgentKitProviders | Sources/AgentKitProviders | Core + SwiftAnthropic + MacPaw/OpenAI | LLM adapters (Claude, OpenAI, Groq, Ollama) + schema translation |
+| AgentKitProviders | Sources/AgentKitProviders | Core + SwiftAnthropic + MacPaw/OpenAI | LLM adapters (Claude, OpenAI, Apple Foundation Models) + schema translation |
 | AgentKitChat | Sources/AgentKitChat | Core only | Drop-in SwiftUI chat view and theming |
 | AgentKitMCP | Sources/AgentKitMCP | Core only | MCP client + system API bundles |
 | AgentKitDevTools | Sources/AgentKitDevTools | Core only | Debug inspector, loop replay, token counter |

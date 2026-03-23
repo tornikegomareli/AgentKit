@@ -152,20 +152,6 @@ struct LLMProviderTests {
         #expect(adapter is OpenAIAdapter)
     }
 
-    @Test("Groq provider creates OpenAIAdapter with Groq host")
-    func testGroqProvider() {
-        let provider = LLMProvider.groq(apiKey: "test-key")
-        let adapter = provider.adapter()
-        #expect(adapter is OpenAIAdapter)
-    }
-
-    @Test("Ollama provider creates OllamaAdapter")
-    func testOllamaProvider() {
-        let provider = LLMProvider.ollama(model: .llama3_1)
-        let adapter = provider.adapter()
-        #expect(adapter is OllamaAdapter)
-    }
-
     @Test("Claude with specific model uses correct ID")
     func testClaudeWithModel() {
         let provider = LLMProvider.claude(apiKey: "test", model: .opus)
@@ -176,13 +162,6 @@ struct LLMProviderTests {
     @Test("OpenAI with specific model uses correct ID")
     func testOpenAIWithModel() {
         let provider = LLMProvider.openai(apiKey: "test", model: .gpt5_4)
-        let adapter = provider.adapter()
-        #expect(adapter is OpenAIAdapter)
-    }
-
-    @Test("Groq with specific model uses correct ID")
-    func testGroqWithModel() {
-        let provider = LLMProvider.groq(apiKey: "test", model: .gptOss120b)
         let adapter = provider.adapter()
         #expect(adapter is OpenAIAdapter)
     }

@@ -2,15 +2,14 @@ import Foundation
 
 /// A type-safe model identifier for LLM providers.
 ///
-/// Use the nested enums (``Claude``, ``OpenAI``, ``Groq``, ``Ollama``)
+/// Use the nested enums (``Claude``, ``OpenAI``, ``Apple``)
 /// for built-in models, or ``custom(_:)`` for any model ID string.
-/// Every enum case maps to the exact API model ID accepted by the provider.
 ///
 /// ## Example
 /// ```swift
 /// let agent = AgentKit(provider: .claude(apiKey: key, model: .sonnet))
 /// let agent = AgentKit(provider: .openai(apiKey: key, model: .gpt4o))
-/// let agent = AgentKit(provider: .groq(apiKey: key, model: .llama3_3_70b))
+/// let agent = AgentKit(provider: .apple())
 /// ```
 public enum ModelIdentifier: Sendable, Equatable, CustomStringConvertible {
 
@@ -84,59 +83,6 @@ public enum ModelIdentifier: Sendable, Equatable, CustomStringConvertible {
         public static var `default`: OpenAI { .gpt4o }
     }
 
-    // MARK: - Groq
-
-    /// Groq model identifiers (OpenAI-compatible API).
-    /// Source: https://console.groq.com/docs/models
-    public enum Groq: String, Sendable, CaseIterable {
-        /// Llama 3.3 70B — versatile, fast.
-        /// 131k context, 32k output.
-        case llama3_3_70b = "llama-3.3-70b-versatile"
-
-        /// Llama 3.1 8B — fastest, lightweight.
-        /// 131k context, 131k output.
-        case llama3_1_8b = "llama-3.1-8b-instant"
-
-        /// OpenAI GPT-OSS 120B on Groq — large open model.
-        /// 131k context, 65k output.
-        case gptOss120b = "openai/gpt-oss-120b"
-
-        /// OpenAI GPT-OSS 20B on Groq — smaller open model.
-        /// 131k context, 65k output.
-        case gptOss20b = "openai/gpt-oss-20b"
-
-        /// Llama 4 Scout 17B (preview).
-        /// 131k context, 8k output.
-        case llama4Scout = "meta-llama/llama-4-scout-17b-16e-instruct"
-
-        /// Qwen3 32B (preview).
-        /// 131k context, 40k output.
-        case qwen3_32b = "qwen/qwen3-32b"
-
-        /// The default model recommended for most use cases.
-        public static var `default`: Groq { .llama3_3_70b }
-    }
-
-    // MARK: - Ollama
-
-    /// Common Ollama model names.
-    /// These are the default pull names — Ollama supports any GGUF model.
-    public enum Ollama: String, Sendable, CaseIterable {
-        case llama3_1 = "llama3.1"
-        case llama3_2 = "llama3.2"
-        case llama3_3 = "llama3.3"
-        case mistral = "mistral"
-        case mixtral = "mixtral"
-        case codellama = "codellama"
-        case phi3 = "phi3"
-        case gemma2 = "gemma2"
-        case qwen2_5 = "qwen2.5"
-        case deepseekCoder = "deepseek-coder-v2"
-
-        /// The default model for local Ollama usage.
-        public static var `default`: Ollama { .llama3_3 }
-    }
-
     // MARK: - Apple (on-device)
 
     /// Apple Foundation Models identifiers (iOS 26+, macOS 26+).
@@ -162,8 +108,6 @@ public enum ModelIdentifier: Sendable, Equatable, CustomStringConvertible {
         switch self {
         case .claude(let m): return m.rawValue
         case .openAI(let m): return m.rawValue
-        case .groq(let m): return m.rawValue
-        case .ollama(let m): return m.rawValue
         case .apple(let m): return m.rawValue
         case .custom(let id): return id
         }
@@ -174,8 +118,6 @@ public enum ModelIdentifier: Sendable, Equatable, CustomStringConvertible {
 
     case claude(Claude)
     case openAI(OpenAI)
-    case groq(Groq)
-    case ollama(Ollama)
     case apple(Apple)
     case custom(String)
 }

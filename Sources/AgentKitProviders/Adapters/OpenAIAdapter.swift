@@ -3,8 +3,7 @@ import AgentKitCore
 import OpenAI
 import os.log
 
-/// LLM adapter for OpenAI models (and OpenAI-compatible APIs like Groq)
-/// via the MacPaw/OpenAI SDK.
+/// LLM adapter for OpenAI models via the MacPaw/OpenAI SDK.
 ///
 /// Handles streaming responses, tool call accumulation across chunks,
 /// and parallel tool calls.
@@ -17,9 +16,9 @@ public final class OpenAIAdapter: LLMAdapter, @unchecked Sendable {
     /// Initialize an OpenAI adapter.
     ///
     /// - Parameters:
-    ///   - apiKey: Your OpenAI API key (or Groq key for compatible endpoints).
+    ///   - apiKey: Your OpenAI API key.
     ///   - model: The model identifier. Defaults to GPT-4o.
-    ///   - host: API host. Override for Groq or other compatible endpoints.
+    ///   - host: API host. Override for OpenAI-compatible endpoints.
     ///   - systemPrompt: Optional system prompt prepended to every conversation.
     public init(
         apiKey: String,

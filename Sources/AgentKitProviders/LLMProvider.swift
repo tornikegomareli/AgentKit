@@ -10,8 +10,8 @@ import AgentKitCore
 /// ```swift
 /// let agent = AgentKit(provider: .claude(apiKey: "sk-ant-..."))
 /// let agent = AgentKit(provider: .claude(apiKey: key, model: .opus))
-/// let agent = AgentKit(provider: .openai(apiKey: key, model: .gpt5_4))
-/// let agent = AgentKit(provider: .groq(apiKey: key, model: .llama3_3_70b))
+/// let agent = AgentKit(provider: .openai(apiKey: key, model: .gpt4o))
+/// let agent = AgentKit(provider: .apple())
 /// ```
 public enum LLMProvider: Sendable {
     /// Anthropic Claude models.
@@ -27,20 +27,6 @@ public enum LLMProvider: Sendable {
     ///   - apiKey: Your OpenAI API key.
     ///   - model: A ``ModelIdentifier/OpenAI`` case. Defaults to `.gpt4o`.
     case openai(apiKey: String, model: ModelIdentifier.OpenAI = .default)
-
-    /// Groq (OpenAI-compatible endpoint).
-    ///
-    /// - Parameters:
-    ///   - apiKey: Your Groq API key.
-    ///   - model: A ``ModelIdentifier/Groq`` case. Defaults to `.llama3_3_70b`.
-    case groq(apiKey: String, model: ModelIdentifier.Groq = .default)
-
-    /// Ollama local models.
-    ///
-    /// - Parameters:
-    ///   - model: A ``ModelIdentifier/Ollama`` case. Defaults to `.llama3_3`.
-    ///   - host: Server URL. Defaults to http://localhost:11434.
-    case ollama(model: ModelIdentifier.Ollama = .default, host: String = "http://localhost:11434")
 
     /// Apple on-device model via Foundation Models (iOS 26+, macOS 26+).
     ///
@@ -60,8 +46,6 @@ public enum LLMProvider: Sendable {
     /// ```
     case claudeCustom(apiKey: String, modelId: String)
     case openaiCustom(apiKey: String, modelId: String)
-    case groqCustom(apiKey: String, modelId: String)
-    case ollamaCustom(modelId: String, host: String = "http://localhost:11434")
 
     /// Create a concrete ``LLMAdapter`` from this provider configuration.
     public func adapter() -> any LLMAdapter {
@@ -71,16 +55,6 @@ public enum LLMProvider: Sendable {
 
         case .openai(let apiKey, let model):
             return OpenAIAdapter(apiKey: apiKey, model: model.rawValue)
-
-        case .groq(let apiKey, let model):
-            return OpenAIAdapter(
-                apiKey: apiKey,
-                model: model.rawValue,
-                host: "api.groq.com"
-            )
-
-        case .ollama(let model, let host):
-            return OllamaAdapter(model: model.rawValue, host: host)
 
         case .apple(let model):
             return AppleAdapter(model: model)
@@ -93,12 +67,6 @@ public enum LLMProvider: Sendable {
 
         case .openaiCustom(let apiKey, let modelId):
             return OpenAIAdapter(apiKey: apiKey, model: modelId)
-
-        case .groqCustom(let apiKey, let modelId):
-            return OpenAIAdapter(apiKey: apiKey, model: modelId, host: "api.groq.com")
-
-        case .ollamaCustom(let modelId, let host):
-            return OllamaAdapter(model: modelId, host: host)
         }
     }
 }
