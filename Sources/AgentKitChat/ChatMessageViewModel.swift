@@ -73,17 +73,12 @@ public final class ChatMessageViewModel {
             items.append(ChatItem(role: .toolCall, content: name, toolName: name, toolState: .running))
 
         case .toolConfirmationRequired(let pending):
-            // Mark the running item as awaiting confirmation (hide the spinner)
+            // Mark the running item as awaiting confirmation
             if let index = items.lastIndex(where: {
                 $0.role == .toolCall && $0.toolName == pending.toolName && $0.toolState == .running
             }) {
-                items[index] = ChatItem(
-                    role: .toolCall,
-                    content: pending.toolName,
-                    toolName: pending.toolName,
-                    toolState: .pendingConfirmation,
-                    pendingConfirmation: pending
-                )
+                items[index].toolState = .pendingConfirmation
+                items[index].pendingConfirmation = pending
             }
             // Present the sheet
             activeConfirmation = pending
@@ -95,13 +90,10 @@ public final class ChatMessageViewModel {
                 $0.role == .toolCall && $0.toolName == name &&
                 ($0.toolState == .running || $0.toolState == .pendingConfirmation)
             }) {
-                items[index] = ChatItem(
-                    role: .toolCall,
-                    content: name,
-                    toolName: name,
-                    toolResult: result,
-                    toolState: .completed
-                )
+                items[index].content = name
+                items[index].toolResult = result
+                items[index].toolState = .completed
+                items[index].pendingConfirmation = nil
             }
 
         case .responseComplete(let text):
@@ -120,13 +112,8 @@ public final class ChatMessageViewModel {
         activeConfirmation = nil
         // Update item state back to running while tool executes
         if let index = items.lastIndex(where: { $0.pendingConfirmation?.id == id }) {
-            let toolName = items[index].toolName ?? items[index].content
-            items[index] = ChatItem(
-                role: .toolCall,
-                content: toolName,
-                toolName: toolName,
-                toolState: .running
-            )
+            items[index].toolState = .running
+            items[index].pendingConfirmation = nil
         }
         session.approve(id)
     }
@@ -138,13 +125,8 @@ public final class ChatMessageViewModel {
         activeConfirmation = nil
         // Mark as rejected
         if let index = items.lastIndex(where: { $0.pendingConfirmation?.id == id }) {
-            let toolName = items[index].toolName ?? items[index].content
-            items[index] = ChatItem(
-                role: .toolCall,
-                content: toolName,
-                toolName: toolName,
-                toolState: .rejected
-            )
+            items[index].toolState = .rejected
+            items[index].pendingConfirmation = nil
         }
         session.reject(id)
     }
@@ -164,9 +146,9 @@ public final class ChatMessageViewModel {
 
 /// A single renderable item in the chat.
 public struct ChatItem: Identifiable, Sendable {
-    public let id = UUID()
+    public let id: UUID
     public let role: Role
-    public let content: String
+    public var content: String
     public var toolName: String?
     public var toolResult: String?
     public var toolState: ToolState?
@@ -188,6 +170,7 @@ public struct ChatItem: Identifiable, Sendable {
     public var pendingConfirmation: PendingToolConfirmation?
 
     public init(
+        id: UUID = UUID(),
         role: Role,
         content: String,
         toolName: String? = nil,
@@ -195,6 +178,7 @@ public struct ChatItem: Identifiable, Sendable {
         toolState: ToolState? = nil,
         pendingConfirmation: PendingToolConfirmation? = nil
     ) {
+        self.id = id
         self.role = role
         self.content = content
         self.toolName = toolName
