@@ -22,6 +22,9 @@ public final class ChatMessageViewModel {
     /// Active tool calls being executed.
     public private(set) var activeToolCalls: Set<String> = []
 
+    /// The current pending confirmation to show in a sheet. Nil when no confirmation is active.
+    public var activeConfirmation: PendingToolConfirmation?
+
     private let session: AgentSession
 
     public init(session: AgentSession) {
@@ -53,6 +56,7 @@ public final class ChatMessageViewModel {
         streamingText = ""
         isStreaming = false
         activeToolCalls.removeAll()
+        activeConfirmation = nil
         session.reset()
     }
 
@@ -66,17 +70,35 @@ public final class ChatMessageViewModel {
 
         case .toolCallStarted(let name):
             activeToolCalls.insert(name)
-            items.append(ChatItem(role: .toolCall, content: name, toolState: .running))
+            items.append(ChatItem(role: .toolCall, content: name, toolName: name, toolState: .running))
+
+        case .toolConfirmationRequired(let pending):
+            // Mark the running item as awaiting confirmation (hide the spinner)
+            if let index = items.lastIndex(where: {
+                $0.role == .toolCall && $0.toolName == pending.toolName && $0.toolState == .running
+            }) {
+                items[index] = ChatItem(
+                    role: .toolCall,
+                    content: pending.toolName,
+                    toolName: pending.toolName,
+                    toolState: .pendingConfirmation,
+                    pendingConfirmation: pending
+                )
+            }
+            // Present the sheet
+            activeConfirmation = pending
 
         case .toolCallCompleted(let name, let result):
             activeToolCalls.remove(name)
-            // Update the matching tool call item
+            // Find matching item — could be .running (after approve) or .pendingConfirmation
             if let index = items.lastIndex(where: {
-                $0.role == .toolCall && $0.content == name && $0.toolState == .running
+                $0.role == .toolCall && $0.toolName == name &&
+                ($0.toolState == .running || $0.toolState == .pendingConfirmation)
             }) {
                 items[index] = ChatItem(
                     role: .toolCall,
                     content: name,
+                    toolName: name,
                     toolResult: result,
                     toolState: .completed
                 )
@@ -86,14 +108,6 @@ public final class ChatMessageViewModel {
             streamingText = ""
             items.append(ChatItem(role: .assistant, content: text))
 
-        case .toolConfirmationRequired(let pending):
-            items.append(ChatItem(
-                role: .toolCall,
-                content: pending.displayMessage ?? "Confirm: \(pending.toolName)",
-                toolState: .pendingConfirmation,
-                pendingConfirmation: pending
-            ))
-
         case .error(let error):
             items.append(ChatItem(role: .error, content: error.description))
         }
@@ -102,10 +116,15 @@ public final class ChatMessageViewModel {
     /// Approve a pending tool confirmation, allowing it to execute.
     @MainActor
     public func approve(_ id: UUID) {
+        // Dismiss sheet
+        activeConfirmation = nil
+        // Update item state back to running while tool executes
         if let index = items.lastIndex(where: { $0.pendingConfirmation?.id == id }) {
+            let toolName = items[index].toolName ?? items[index].content
             items[index] = ChatItem(
                 role: .toolCall,
-                content: items[index].content,
+                content: toolName,
+                toolName: toolName,
                 toolState: .running
             )
         }
@@ -115,10 +134,15 @@ public final class ChatMessageViewModel {
     /// Reject a pending tool confirmation. The LLM receives a "declined" result.
     @MainActor
     public func reject(_ id: UUID) {
+        // Dismiss sheet
+        activeConfirmation = nil
+        // Mark as rejected
         if let index = items.lastIndex(where: { $0.pendingConfirmation?.id == id }) {
+            let toolName = items[index].toolName ?? items[index].content
             items[index] = ChatItem(
                 role: .toolCall,
-                content: items[index].content,
+                content: toolName,
+                toolName: toolName,
                 toolState: .rejected
             )
         }
@@ -143,6 +167,7 @@ public struct ChatItem: Identifiable, Sendable {
     public let id = UUID()
     public let role: Role
     public let content: String
+    public var toolName: String?
     public var toolResult: String?
     public var toolState: ToolState?
 
@@ -165,12 +190,14 @@ public struct ChatItem: Identifiable, Sendable {
     public init(
         role: Role,
         content: String,
+        toolName: String? = nil,
         toolResult: String? = nil,
         toolState: ToolState? = nil,
         pendingConfirmation: PendingToolConfirmation? = nil
     ) {
         self.role = role
         self.content = content
+        self.toolName = toolName
         self.toolResult = toolResult
         self.toolState = toolState
         self.pendingConfirmation = pendingConfirmation

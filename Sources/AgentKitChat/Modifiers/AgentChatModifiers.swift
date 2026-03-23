@@ -1,4 +1,5 @@
 import SwiftUI
+import AgentKitCore
 
 /// View modifiers for configuring ``AgentChatView``.
 ///
@@ -63,6 +64,30 @@ public extension View {
     func showTypingIndicator(_ show: Bool) -> some View {
         transformEnvironment(\.chatConfiguration) { config in
             config.showTypingIndicator = show
+        }
+    }
+
+    /// Provide a custom confirmation sheet view for tool approval.
+    ///
+    /// When a tool requires confirmation, this view is presented as a sheet
+    /// instead of the default ``ToolConfirmationSheet``.
+    ///
+    /// ## Example
+    /// ```swift
+    /// AgentChatView(session: session)
+    ///     .confirmationView { confirmation, approve, reject in
+    ///         VStack {
+    ///             Text("Custom: \(confirmation.toolName)")
+    ///             Button("Allow", action: approve)
+    ///             Button("Deny", action: reject)
+    ///         }
+    ///     }
+    /// ```
+    func confirmationView<Content: View>(
+        @ViewBuilder content: @escaping (PendingToolConfirmation, @escaping () -> Void, @escaping () -> Void) -> Content
+    ) -> some View {
+        environment(\.confirmationViewBuilder) { confirmation, approve, reject in
+            AnyView(content(confirmation, approve, reject))
         }
     }
 }

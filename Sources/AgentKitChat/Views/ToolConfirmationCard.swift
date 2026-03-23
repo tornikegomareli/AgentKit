@@ -2,113 +2,149 @@ import SwiftUI
 import LocalAuthentication
 import AgentKitCore
 
-/// Inline confirmation card displayed in the chat when a tool requires user approval.
+/// Default confirmation sheet content shown when a tool requires user approval.
 ///
-/// Shows the tool name, a human-readable description of the action, and
-/// Approve/Reject buttons. For biometric-tier tools, the Approve button
-/// triggers Face ID / Touch ID before forwarding approval.
+/// Developers can replace this with a custom view using the
+/// `.confirmationView` modifier on ``AgentChatView``.
 @available(iOS 17.0, macOS 14.0, *)
-struct ToolConfirmationCard: View {
-    let item: ChatItem
-    let onApprove: (UUID) -> Void
-    let onReject: (UUID) -> Void
-    @Environment(\.chatConfiguration) private var config
+public struct ToolConfirmationSheet: View {
+    public let confirmation: PendingToolConfirmation
+    public let onApprove: () -> Void
+    public let onReject: () -> Void
     @State private var isAuthenticating = false
-    @State private var authError: String?
+    @State private var authFailed = false
 
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            // Header
-            HStack(spacing: 8) {
-                Image(systemName: "exclamationmark.shield.fill")
-                    .font(.body)
+    public init(
+        confirmation: PendingToolConfirmation,
+        onApprove: @escaping () -> Void,
+        onReject: @escaping () -> Void
+    ) {
+        self.confirmation = confirmation
+        self.onApprove = onApprove
+        self.onReject = onReject
+    }
+
+    public var body: some View {
+        VStack(spacing: 24) {
+            // Handle bar
+            Capsule()
+                .fill(Color.secondary.opacity(0.3))
+                .frame(width: 36, height: 5)
+                .padding(.top, 12)
+
+            // Icon
+            ZStack {
+                Circle()
+                    .fill(Color.orange.opacity(0.12))
+                    .frame(width: 64, height: 64)
+                Image(systemName: confirmation.requiresBiometric ? "lock.shield.fill" : "checkmark.shield.fill")
+                    .font(.title)
                     .foregroundStyle(.orange)
-                Text("Action requires approval")
-                    .font(.caption.weight(.semibold))
+            }
+
+            // Title
+            VStack(spacing: 6) {
+                Text("Confirm Action")
+                    .font(.title3.weight(.bold))
+                Text(confirmation.toolName)
+                    .font(.caption.monospaced())
                     .foregroundStyle(.secondary)
             }
 
-            // Tool name
-            Text(item.pendingConfirmation?.toolName ?? "")
-                .font(.caption.monospaced().weight(.medium))
-                .foregroundStyle(config.accentColor)
-
-            // Display message
-            Text(item.content)
-                .font(.subheadline)
-
-            // Auth error
-            if let authError {
-                Text(authError)
-                    .font(.caption)
-                    .foregroundStyle(.red)
+            // Description
+            if let message = confirmation.displayMessage {
+                Text(message)
+                    .font(.body)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 24)
+                    .padding(.vertical, 16)
+                    .frame(maxWidth: .infinity)
+                    .background(Color.secondary.opacity(0.08))
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
             }
 
-            // Action buttons
-            HStack(spacing: 12) {
-                Button {
-                    guard let id = item.pendingConfirmation?.id else { return }
-                    onReject(id)
-                } label: {
-                    Text("Reject")
-                        .font(.subheadline.weight(.medium))
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 10)
-                        .background(Color.secondary.opacity(0.12))
-                        .clipShape(RoundedRectangle(cornerRadius: 10))
+            if confirmation.requiresBiometric {
+                HStack(spacing: 6) {
+                    Image(systemName: "faceid")
+                        .font(.caption)
+                    Text("Biometric authentication required")
+                        .font(.caption)
                 }
-                .buttonStyle(.plain)
+                .foregroundStyle(.secondary)
+            }
 
+            // Auth error
+            if authFailed {
+                HStack(spacing: 6) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.caption)
+                    Text("Authentication failed. Try again.")
+                        .font(.caption)
+                }
+                .foregroundStyle(.red)
+            }
+
+            Spacer()
+
+            // Buttons
+            VStack(spacing: 10) {
                 Button {
                     handleApprove()
                 } label: {
-                    HStack(spacing: 6) {
+                    HStack(spacing: 8) {
                         if isAuthenticating {
                             ProgressView()
-                                .controlSize(.mini)
-                        } else if item.pendingConfirmation?.requiresBiometric == true {
+                                .controlSize(.small)
+                                .tint(.white)
+                        } else if confirmation.requiresBiometric {
                             Image(systemName: "faceid")
-                                .font(.caption)
+                                .font(.body)
                         }
-                        Text(item.pendingConfirmation?.requiresBiometric == true ? "Approve with Face ID" : "Approve")
-                            .font(.subheadline.weight(.semibold))
+                        Text(confirmation.requiresBiometric ? "Approve with Face ID" : "Approve")
+                            .font(.headline)
                     }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 10)
                     .foregroundStyle(.white)
-                    .background(config.accentColor)
-                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+                    .background(Color.accentColor)
+                    .clipShape(RoundedRectangle(cornerRadius: 14))
                 }
                 .buttonStyle(.plain)
                 .disabled(isAuthenticating)
+
+                Button {
+                    onReject()
+                } label: {
+                    Text("Reject")
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                }
+                .buttonStyle(.plain)
             }
         }
-        .padding(14)
-        .background(Color.orange.opacity(0.06))
-        .clipShape(RoundedRectangle(cornerRadius: 14))
-        .overlay(
-            RoundedRectangle(cornerRadius: 14)
-                .stroke(Color.orange.opacity(0.2), lineWidth: 1)
-        )
-        .padding(.horizontal, 16)
+        .padding(.horizontal, 20)
+        .padding(.bottom, 16)
+        .presentationDetents([.medium])
+        .presentationDragIndicator(.hidden)
     }
 
     private func handleApprove() {
-        guard let pending = item.pendingConfirmation else { return }
+        authFailed = false
 
-        if pending.requiresBiometric {
+        if confirmation.requiresBiometric {
             isAuthenticating = true
-            authError = nil
             authenticateBiometric { success in
                 isAuthenticating = false
                 if success {
-                    onApprove(pending.id)
+                    onApprove()
                 } else {
-                    authError = "Authentication failed. Try again or reject."
+                    authFailed = true
                 }
             }
         } else {
-            onApprove(pending.id)
+            onApprove()
         }
     }
 
@@ -116,7 +152,6 @@ struct ToolConfirmationCard: View {
         let context = LAContext()
         var error: NSError?
 
-        // Try biometrics first (Face ID / Touch ID)
         if context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &error) {
             context.evaluatePolicy(
                 .deviceOwnerAuthenticationWithBiometrics,
@@ -127,7 +162,6 @@ struct ToolConfirmationCard: View {
             return
         }
 
-        // Fall back to device passcode
         if context.canEvaluatePolicy(.deviceOwnerAuthentication, error: &error) {
             context.evaluatePolicy(
                 .deviceOwnerAuthentication,
@@ -139,7 +173,6 @@ struct ToolConfirmationCard: View {
         }
 
         #if targetEnvironment(simulator)
-        // Simulator with no biometrics/passcode — approve directly for testing
         completion(true)
         #else
         completion(false)

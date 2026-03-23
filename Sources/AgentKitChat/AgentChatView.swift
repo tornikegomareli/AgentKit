@@ -9,25 +9,28 @@ import AgentKitCore
 ///
 /// ## Minimal Usage
 /// ```swift
-/// import AgentKitCore
-/// import AgentKitProviders
-/// import AgentKitChat
+/// AgentChatView(session: agent.startSession())
+///     .agentName("Aria")
+///     .agentAccentColor(.purple)
+/// ```
 ///
-/// let agent = AgentKit(provider: .claude(apiKey: "sk-ant-..."))
-///
-/// struct ContentView: View {
-///     var body: some View {
-///         AgentChatView(session: agent.startSession())
-///             .agentName("Aria")
-///             .agentAccentColor(.purple)
+/// ## Custom Confirmation Sheet
+/// ```swift
+/// AgentChatView(session: session)
+///     .confirmationView { confirmation, approve, reject in
+///         MyCustomConfirmationView(
+///             confirmation: confirmation,
+///             onApprove: approve,
+///             onReject: reject
+///         )
 ///     }
-/// }
 /// ```
 @available(iOS 17.0, macOS 14.0, *)
 public struct AgentChatView: View {
     @State private var viewModel: ChatMessageViewModel
     @State private var inputText = ""
     @Environment(\.chatConfiguration) private var config
+    @Environment(\.confirmationViewBuilder) private var customConfirmationView
 
     /// Create a chat view connected to an agent session.
     ///
@@ -62,13 +65,8 @@ public struct AgentChatView: View {
                             switch item.role {
                             case .toolCall:
                                 if config.showToolCalls {
-                                    if item.toolState == .pendingConfirmation {
-                                        ToolConfirmationCard(
-                                            item: item,
-                                            onApprove: { viewModel.approve($0) },
-                                            onReject: { viewModel.reject($0) }
-                                        )
-                                    } else {
+                                    // Don't show pendingConfirmation items inline — the sheet handles it
+                                    if item.toolState != .pendingConfirmation {
                                         ToolCallRow(item: item)
                                     }
                                 }
@@ -132,6 +130,21 @@ public struct AgentChatView: View {
                 let message = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
                 inputText = ""
                 viewModel.send(message)
+            }
+        }
+        .sheet(item: $viewModel.activeConfirmation) { confirmation in
+            if let builder = customConfirmationView {
+                builder(
+                    confirmation,
+                    { viewModel.approve(confirmation.id) },
+                    { viewModel.reject(confirmation.id) }
+                )
+            } else {
+                ToolConfirmationSheet(
+                    confirmation: confirmation,
+                    onApprove: { viewModel.approve(confirmation.id) },
+                    onReject: { viewModel.reject(confirmation.id) }
+                )
             }
         }
     }
@@ -215,5 +228,24 @@ private struct TypingIndicator: View {
 
     private func dotScale(for index: Int) -> CGFloat {
         phase > 0 ? 1.0 : 0.5
+    }
+}
+
+// MARK: - Custom Confirmation View Environment
+
+/// Type-erased closure for custom confirmation views.
+@available(iOS 17.0, macOS 14.0, *)
+public typealias ConfirmationViewBuilder = (PendingToolConfirmation, @escaping () -> Void, @escaping () -> Void) -> AnyView
+
+@available(iOS 17.0, macOS 14.0, *)
+private struct ConfirmationViewBuilderKey: EnvironmentKey {
+    static let defaultValue: ConfirmationViewBuilder? = nil
+}
+
+@available(iOS 17.0, macOS 14.0, *)
+extension EnvironmentValues {
+    var confirmationViewBuilder: ConfirmationViewBuilder? {
+        get { self[ConfirmationViewBuilderKey.self] }
+        set { self[ConfirmationViewBuilderKey.self] = newValue }
     }
 }
