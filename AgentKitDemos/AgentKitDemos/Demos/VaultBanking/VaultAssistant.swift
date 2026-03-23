@@ -23,21 +23,16 @@ final class VaultAssistant {
                 PERSONALITY: Precise, cautious, transparent. You move money carefully and explain every number.
 
                 CORE RULES:
-                1. CONFIRM BEFORE EVERY FINANCIAL ACTION — Never move money without showing the user exactly what will happen first. Always show: FROM account, TO account/payee, AMOUNT, and the remaining balance after the transfer.
-                2. SHOW THE FULL PICTURE — Before any transfer, warn if it would leave the account below GEL 500, conflict with upcoming scheduled payments, or seem unusual.
-                3. PLAIN LANGUAGE, NO JARGON — Say "transfer from your checking account" not "initiate a debit." Say "arrives in 2 business days" not "settlement T+2."
-                4. IRREVERSIBILITY WARNINGS — For external payments (to payees), large amounts (≥ GEL 1,000), or new recipients, always state: "This action cannot be reversed once confirmed."
-                5. AUDIT TRAIL — Every action you take is logged. Be transparent about what you're doing.
+                1. CALL TOOLS IMMEDIATELY — When the user asks to transfer money, pay someone, or cancel a payment, call the appropriate tool right away. Do NOT ask the user to confirm in chat — the system will automatically show a confirmation dialog before executing. Just call the tool.
+                2. PLAIN LANGUAGE, NO JARGON — Say "transfer from your checking account" not "initiate a debit." Say "arrives in 2 business days" not "settlement T+2."
+                3. AUDIT TRAIL — Every action you take is logged. Be transparent about what you're doing.
 
-                THREE-TIER RISK MODEL:
-                🟢 LOW RISK (execute immediately): View balances, transaction history, spending analysis, list payees, savings calculations
-                🟡 MEDIUM RISK (explain clearly, then execute if user confirms in their message): Internal transfers between user's own accounts, cancel scheduled payments
-                🔴 HIGH RISK (warn strongly, require explicit confirmation): External payments to payees, any amount ≥ GEL 1,000, payments to payees
+                IMPORTANT: Financial tools (transferFunds, payPayee, cancelScheduledPayment) have built-in confirmation dialogs. You do NOT need to ask the user for permission — just call the tool and the system handles approval. Never say "please confirm" or "shall I proceed" — just do it.
 
                 CURRENCY: All amounts are in Georgian Lari (GEL).
 
                 When analyzing spending, give actual numbers and percentages. Be specific.
-                When the user asks to transfer money, first describe exactly what will happen, including the post-transfer balance. Then execute if the user confirms.
+                For read-only queries (balances, transactions, spending), call tools and present the results clearly.
                 """,
                 loggingEnabled: true
             )
@@ -132,7 +127,7 @@ final class VaultAssistant {
 
         await agent.tools.register(
             name: "transferFunds",
-            description: "Transfer money between the user's own accounts (internal transfer). MEDIUM RISK — always explain the transfer details before executing. Show FROM, TO, AMOUNT, and remaining balance.",
+            description: "Transfer money between the user's own accounts (internal transfer). Call this tool directly when the user asks to transfer — the system shows a confirmation dialog automatically.",
             parameters: [
                 .string("fromAccountId", description: "Source account ID (ACC-001, ACC-002, or ACC-003)", required: true),
                 .string("toAccountId", description: "Destination account ID (ACC-001, ACC-002, or ACC-003)", required: true),
@@ -155,7 +150,7 @@ final class VaultAssistant {
 
         await agent.tools.register(
             name: "payPayee",
-            description: "Send payment to an external payee. HIGH RISK — always warn that this cannot be reversed. For amounts ≥ GEL 1,000, give an extra warning about the large amount.",
+            description: "Send payment to an external payee. Call this tool directly — the system shows a biometric confirmation dialog automatically.",
             parameters: [
                 .string("payeeId", description: "Payee ID from the saved payees list", required: true),
                 .string("fromAccountId", description: "Source account ID", required: true),
