@@ -134,7 +134,7 @@ final class VaultAssistant {
                 .number("amount", description: "Amount in GEL to transfer", required: true),
                 .string("reference", description: "Transfer reference/note", required: false)
             ],
-            confirmation: .required({ params in
+            confirmation: .biometric({ params in
                 let amount = params["amount"] as? Double ?? 0
                 let from = params["fromAccountId"] as? String ?? "?"
                 let to = params["toAccountId"] as? String ?? "?"
@@ -176,7 +176,7 @@ final class VaultAssistant {
             parameters: [
                 .string("paymentId", description: "The scheduled payment ID (e.g. SCH-001)", required: true)
             ],
-            confirmation: .required({ params in
+            confirmation: .biometric({ params in
                 let id = params["paymentId"] as? String ?? "?"
                 return "Cancel scheduled payment \(id)"
             })
