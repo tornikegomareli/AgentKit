@@ -46,6 +46,17 @@ struct CoreTypesTests {
         #expect(toolCall.description.contains("search"))
     }
 
+    @Test("AgentMessage Equatable conformance")
+    func testAgentMessageEquatable() {
+        #expect(AgentMessage.user("hi") == AgentMessage.user("hi"))
+        #expect(AgentMessage.user("hi") != AgentMessage.user("bye"))
+        #expect(AgentMessage.assistant("a") == AgentMessage.assistant("a"))
+        #expect(AgentMessage.toolResult(name: "t", result: "r") == AgentMessage.toolResult(name: "t", result: "r"))
+        #expect(AgentMessage.toolResult(name: "t", result: "r") != AgentMessage.toolResult(name: "t", result: "x"))
+        #expect(AgentMessage.toolCall(name: "n", params: [:]) == AgentMessage.toolCall(name: "n", params: [:]))
+        #expect(AgentMessage.user("hi") != AgentMessage.assistant("hi"))
+    }
+
     // MARK: - AgentError
 
     @Test("AgentError cases have meaningful descriptions")
@@ -84,6 +95,18 @@ struct CoreTypesTests {
         #expect(dict["b"] as? String == "two")
     }
 
+    @Test("SendableDictionary typed accessors return correct values")
+    func testSendableDictionaryTypedAccessors() {
+        let dict = SendableDictionary(["s": "hello", "i": 42, "d": 3.14, "b": true, "a": [1, 2, 3]])
+        #expect(dict.string("s") == "hello")
+        #expect(dict.int("i") == 42)
+        #expect(dict.double("d") == 3.14)
+        #expect(dict.bool("b") == true)
+        #expect(dict.array("a")?.count == 3)
+        #expect(dict.string("missing") == nil)
+        #expect(dict.int("s") == nil)
+    }
+
     // MARK: - AgentContext
 
     @Test("AgentContext default initializer creates empty context")
@@ -100,7 +123,6 @@ struct CoreTypesTests {
     func testDefaultConfiguration() {
         let config = Configuration.default
         #expect(config.maxIterations == 10)
-        #expect(config.contextBudgetFraction == 0.8)
         #expect(config.systemPrompt == nil)
         #expect(config.loggingEnabled == false)
     }
@@ -108,8 +130,8 @@ struct CoreTypesTests {
     @Test("Configuration rejects invalid values")
     func testConfigurationValidation() {
         // These should not crash — valid values
-        _ = Configuration(maxIterations: 1, contextBudgetFraction: 0.5)
-        _ = Configuration(maxIterations: 100, contextBudgetFraction: 1.0)
+        _ = Configuration(maxIterations: 1)
+        _ = Configuration(maxIterations: 100)
     }
 
     // MARK: - ModelIdentifier
@@ -139,20 +161,5 @@ struct CoreTypesTests {
         #expect(ModelIdentifier.Apple.general.rawValue == "apple-on-device-general")
         #expect(ModelIdentifier.Apple.generalPermissive.rawValue == "apple-on-device-general-permissive")
         #expect(ModelIdentifier.Apple.default == .general)
-    }
-
-    @Test("ModelIdentifier.id returns the raw API string")
-    func testModelIdentifierDescription() {
-        let claude = ModelIdentifier.claude(.opus)
-        #expect(claude.id == "claude-opus-4-6")
-
-        let openai = ModelIdentifier.openAI(.gpt5_4)
-        #expect(openai.id == "gpt-5.4")
-
-        let apple = ModelIdentifier.apple(.general)
-        #expect(apple.id == "apple-on-device-general")
-
-        let custom = ModelIdentifier.custom("my-fine-tune-v2")
-        #expect(custom.id == "my-fine-tune-v2")
     }
 }

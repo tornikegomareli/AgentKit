@@ -23,27 +23,36 @@ import Foundation
 /// // With biometric authentication
 /// confirmation: .biometric { params in "Send external payment?" }
 /// ```
-public enum ToolConfirmationPolicy: Sendable {
+public struct ToolConfirmationPolicy: Sendable {
+    /// The kind of confirmation required.
+    public let kind: Kind
+
+    /// Optional closure that builds a human-readable message describing the action.
+    public let messageBuilder: (@Sendable (SendableDictionary) -> String)?
+
+    /// The type of confirmation required for a tool call.
+    public enum Kind: Sendable { case none, required, biometric }
+
+    private init(kind: Kind, messageBuilder: (@Sendable (SendableDictionary) -> String)?) {
+        self.kind = kind
+        self.messageBuilder = messageBuilder
+    }
+
     /// Execute immediately with no user interaction. This is the default.
-    case none
-    /// Pause and show a confirmation dialog. The user must explicitly approve.
-    case _required((@Sendable (SendableDictionary) -> String)?)
-    /// Pause, show a confirmation dialog, and require biometric authentication
-    /// (Face ID / Touch ID / device PIN) before executing.
-    case _biometric((@Sendable (SendableDictionary) -> String)?)
+    public static let none = ToolConfirmationPolicy(kind: .none, messageBuilder: nil)
 
     /// Require user confirmation before executing this tool.
-    public static var required: Self { ._required(nil) }
+    public static let required = ToolConfirmationPolicy(kind: .required, messageBuilder: nil)
 
     /// Require user confirmation with biometric authentication.
-    public static var biometric: Self { ._biometric(nil) }
+    public static let biometric = ToolConfirmationPolicy(kind: .biometric, messageBuilder: nil)
 
     /// Require user confirmation with a custom message describing the action.
     ///
     /// - Parameter message: Closure that receives the tool parameters and returns
     ///   a human-readable description of what the tool will do.
     public static func required(_ message: @escaping @Sendable (SendableDictionary) -> String) -> Self {
-        ._required(message)
+        ToolConfirmationPolicy(kind: .required, messageBuilder: message)
     }
 
     /// Require biometric-authenticated confirmation with a custom message.
@@ -51,35 +60,18 @@ public enum ToolConfirmationPolicy: Sendable {
     /// - Parameter message: Closure that receives the tool parameters and returns
     ///   a human-readable description of what the tool will do.
     public static func biometric(_ message: @escaping @Sendable (SendableDictionary) -> String) -> Self {
-        ._biometric(message)
+        ToolConfirmationPolicy(kind: .biometric, messageBuilder: message)
     }
 
     /// Whether this policy requires any user confirmation.
-    public var requiresConfirmation: Bool {
-        switch self {
-        case .none: return false
-        case ._required, ._biometric: return true
-        }
-    }
+    public var requiresConfirmation: Bool { kind != .none }
 
     /// Whether this policy requires biometric authentication.
-    public var requiresBiometric: Bool {
-        switch self {
-        case ._biometric: return true
-        default: return false
-        }
-    }
+    public var requiresBiometric: Bool { kind == .biometric }
 
     /// Build the display message for a given set of parameters, or nil if no builder was provided.
     public func buildMessage(for params: SendableDictionary) -> String? {
-        switch self {
-        case .none:
-            return nil
-        case ._required(let builder):
-            return builder?(params)
-        case ._biometric(let builder):
-            return builder?(params)
-        }
+        messageBuilder?(params)
     }
 }
 

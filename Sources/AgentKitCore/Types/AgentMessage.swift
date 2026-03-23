@@ -19,6 +19,23 @@ public enum AgentMessage: Sendable {
     case toolResult(name: String, result: String)
 }
 
+extension AgentMessage: Equatable {
+    public static func == (lhs: AgentMessage, rhs: AgentMessage) -> Bool {
+        switch (lhs, rhs) {
+        case (.user(let a), .user(let b)):
+            return a == b
+        case (.assistant(let a), .assistant(let b)):
+            return a == b
+        case (.toolCall(let nameA, let paramsA), .toolCall(let nameB, let paramsB)):
+            return nameA == nameB && paramsA.description == paramsB.description
+        case (.toolResult(let nameA, let resultA), .toolResult(let nameB, let resultB)):
+            return nameA == nameB && resultA == resultB
+        default:
+            return false
+        }
+    }
+}
+
 extension AgentMessage: CustomStringConvertible {
     public var description: String {
         switch self {

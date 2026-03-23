@@ -79,19 +79,4 @@ public final class AgentKit: Sendable {
         return AgentSession(loopRunner: runner, confirmationGate: gate)
     }
 
-    /// Start a new conversation session for iOS 16.
-    ///
-    /// Uses ``AgentSessionLegacy`` which does not require @Observable.
-    public func startLegacySession() -> AgentSessionLegacy {
-        let gate = ToolConfirmationGate()
-        let runner = AgentLoopRunner(
-            adapter: adapter,
-            fallbackAdapter: fallbackAdapter,
-            toolRegistry: tools,
-            stateManager: state,
-            configuration: configuration,
-            confirmationGate: gate
-        )
-        return AgentSessionLegacy(loopRunner: runner, confirmationGate: gate)
-    }
 }

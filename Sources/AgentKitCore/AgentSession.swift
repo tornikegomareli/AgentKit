@@ -7,8 +7,8 @@ import os.log
 /// events. It maintains conversation history and exposes an event stream
 /// that any UI — custom or ``AgentKitChat`` — can consume.
 ///
-/// Uses the Observation framework (`@Observable`) on iOS 17+ for automatic
-/// SwiftUI integration. On iOS 16, use the ``events`` async stream directly.
+/// Uses the Observation framework (`@Observable`) for automatic
+/// SwiftUI integration.
 ///
 /// ## Headless Usage
 /// ```swift
@@ -64,6 +64,12 @@ public final class AgentSession: @unchecked Sendable {
         self.eventContinuation = continuation
     }
 
+    deinit {
+        currentTask?.cancel()
+        let gate = confirmationGate
+        Task { await gate.cancelAll() }
+    }
+
     // MARK: - Public API
 
     /// Send a user message and begin the agent's response.
@@ -73,6 +79,7 @@ public final class AgentSession: @unchecked Sendable {
     /// as the conversation progresses.
     ///
     /// If a previous turn is still running, it is cancelled first.
+    @MainActor
     public func send(_ text: String) {
         // Cancel any in-flight request
         currentTask?.cancel()
@@ -131,6 +138,7 @@ public final class AgentSession: @unchecked Sendable {
     }
 
     /// Cancel the current agent turn.
+    @MainActor
     public func cancel() {
         currentTask?.cancel()
         currentTask = nil
@@ -140,6 +148,7 @@ public final class AgentSession: @unchecked Sendable {
     }
 
     /// Clear all conversation history and start fresh.
+    @MainActor
     public func reset() {
         cancel()
         messages.removeAll()
@@ -188,95 +197,5 @@ public final class AgentSession: @unchecked Sendable {
     private func finish() {
         isProcessing = false
         eventContinuation?.finish()
-    }
-}
-
-// MARK: - iOS 16 Fallback
-
-/// A non-Observable session for iOS 16 support.
-/// Uses async streams directly without @Observable.
-public final class AgentSessionLegacy: @unchecked Sendable {
-    public private(set) var messages: [AgentMessage] = []
-    public private(set) var isProcessing: Bool = false
-    public private(set) var pendingConfirmations: [PendingToolConfirmation] = []
-
-    private let loopRunner: AgentLoopRunner
-    private let confirmationGate: ToolConfirmationGate
-    private var currentTask: Task<Void, Never>?
-    private var eventContinuation: AsyncStream<AgentLoopEvent>.Continuation?
-    public private(set) var events: AsyncStream<AgentLoopEvent>
-
-    public init(loopRunner: AgentLoopRunner, confirmationGate: ToolConfirmationGate = ToolConfirmationGate()) {
-        self.loopRunner = loopRunner
-        self.confirmationGate = confirmationGate
-        var continuation: AsyncStream<AgentLoopEvent>.Continuation!
-        self.events = AsyncStream { continuation = $0 }
-        self.eventContinuation = continuation
-    }
-
-    public func approve(_ id: UUID) {
-        pendingConfirmations.removeAll { $0.id == id }
-        Task { await confirmationGate.resolve(id: id, decision: .approved) }
-    }
-
-    public func reject(_ id: UUID) {
-        pendingConfirmations.removeAll { $0.id == id }
-        Task { await confirmationGate.resolve(id: id, decision: .rejected) }
-    }
-
-    public func send(_ text: String) {
-        currentTask?.cancel()
-
-        eventContinuation?.finish()
-        var continuation: AsyncStream<AgentLoopEvent>.Continuation!
-        events = AsyncStream { continuation = $0 }
-        eventContinuation = continuation
-
-        messages.append(.user(text))
-        isProcessing = true
-
-        currentTask = Task { [weak self] in
-            guard let self else { return }
-
-            let loopStream = await self.loopRunner.run(messages: self.messages)
-
-            do {
-                for try await event in loopStream {
-                    self.handleEvent(event)
-                    self.eventContinuation?.yield(event)
-                }
-            } catch {
-                // Stream ended
-            }
-
-            self.isProcessing = false
-            self.eventContinuation?.finish()
-        }
-    }
-
-    public func cancel() {
-        currentTask?.cancel()
-        currentTask = nil
-        isProcessing = false
-    }
-
-    public func reset() {
-        cancel()
-        messages.removeAll()
-    }
-
-    private func handleEvent(_ event: AgentLoopEvent) {
-        switch event {
-        case .toolCallStarted(let name):
-            messages.append(.toolCall(name: name, params: [:]))
-        case .responseComplete(let text):
-            messages.append(.assistant(text))
-        case .toolCallCompleted(let name, let result):
-            messages.append(.toolResult(name: name, result: result))
-        case .toolConfirmationRequired(let pending):
-            pendingConfirmations.append(pending)
-        default:
-            break
-        }
     }
 }

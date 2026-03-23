@@ -1,9 +1,8 @@
 import Foundation
 
-/// A type-safe model identifier for LLM providers.
+/// A namespace for type-safe model identifiers across LLM providers.
 ///
-/// Use the nested enums (``Claude``, ``OpenAI``, ``Apple``)
-/// for built-in models, or ``custom(_:)`` for any model ID string.
+/// Use the nested enums (``Claude``, ``OpenAI``, ``Apple``) for built-in models.
 ///
 /// ## Example
 /// ```swift
@@ -11,7 +10,7 @@ import Foundation
 /// let agent = AgentKit(provider: .openai(apiKey: key, model: .gpt4o))
 /// let agent = AgentKit(provider: .apple())
 /// ```
-public enum ModelIdentifier: Sendable, Equatable, CustomStringConvertible {
+public enum ModelIdentifier {
 
     // MARK: - Anthropic Claude
 
@@ -101,23 +100,4 @@ public enum ModelIdentifier: Sendable, Equatable, CustomStringConvertible {
         /// The default Apple on-device configuration.
         public static var `default`: Apple { .general }
     }
-
-    // MARK: - Description
-
-    public var description: String {
-        switch self {
-        case .claude(let m): return m.rawValue
-        case .openAI(let m): return m.rawValue
-        case .apple(let m): return m.rawValue
-        case .custom(let id): return id
-        }
-    }
-
-    /// The raw string model ID accepted by the provider's API.
-    public var id: String { description }
-
-    case claude(Claude)
-    case openAI(OpenAI)
-    case apple(Apple)
-    case custom(String)
 }

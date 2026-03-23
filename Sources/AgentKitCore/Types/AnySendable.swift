@@ -43,3 +43,20 @@ extension SendableDictionary: CustomStringConvertible {
         storage.description
     }
 }
+
+extension SendableDictionary {
+    /// Retrieve a `String` value for the given key, or `nil` if absent or wrong type.
+    public func string(_ key: String) -> String? { self[key] as? String }
+
+    /// Retrieve an `Int` value for the given key, or `nil` if absent or wrong type.
+    public func int(_ key: String) -> Int? { self[key] as? Int }
+
+    /// Retrieve a `Double` value for the given key, or `nil` if absent or wrong type.
+    public func double(_ key: String) -> Double? { self[key] as? Double }
+
+    /// Retrieve a `Bool` value for the given key, or `nil` if absent or wrong type.
+    public func bool(_ key: String) -> Bool? { self[key] as? Bool }
+
+    /// Retrieve an `[Any]` value for the given key, or `nil` if absent or wrong type.
+    public func array(_ key: String) -> [Any]? { self[key] as? [Any] }
+}
