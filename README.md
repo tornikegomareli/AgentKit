@@ -2,23 +2,11 @@
 
 **Give any iOS or macOS app an AI agent in 10 lines of Swift.**
 
-AgentKit is a modular Swift Package that adds an agentic layer to your app — a loop that can reason, call tools, observe state, and respond. It wraps multiple LLM providers behind a single protocol and ships a drop-in chat UI with built-in tool confirmation flows.
+AgentKit is a modular Swift Package that adds an agentic layer to your app — a loop that can reason, call tools, observe state, and respond. It wraps multiple LLM providers behind a single protocol and ships a drop-in agentic UI with built-in tool confirmation flows.
 
 [![Swift 5.9+](https://img.shields.io/badge/Swift-5.9+-orange.svg)](https://swift.org)
 [![Platforms](https://img.shields.io/badge/Platforms-iOS%2017%2B%20%7C%20macOS%2014%2B-blue.svg)](https://developer.apple.com)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-
----
-
-## Why AgentKit?
-
-- **10 lines to a working agent** — register tools, pick an LLM, drop in a chat view
-- **Zero lock-in** — swap Claude for OpenAI for Apple on-device. Same code.
-- **3 providers** — Claude, OpenAI, Apple Foundation Models, or bring your own
-- **Tool confirmation** — built-in approval flow with optional biometric auth for sensitive actions
-- **Modular** — import only what you need. Headless? Skip the UI. Custom UI? Skip the chat view.
-- **Swift-native** — async/await, actors, structured concurrency. No Combine, no callbacks.
-- **Testable** — every component has a mock. No network calls in tests.
 
 ---
 
@@ -27,7 +15,6 @@ AgentKit is a modular Swift Package that adds an agentic layer to your app — a
 ### 1. Add the package
 
 ```swift
-// Package.swift
 dependencies: [
     .package(url: "https://github.com/tornikegomareli/AgentKit.git", from: "0.1.0")
 ]
@@ -35,7 +22,7 @@ dependencies: [
 
 Or in Xcode: **File > Add Package Dependencies** > paste the URL.
 
-### 2. Drop-in chat (10 lines)
+### 2. Drop-in chat
 
 ```swift
 import AgentKitCore
@@ -60,7 +47,7 @@ AgentChatView(session: agent.startSession())
     .suggestedPrompts(["Track my order", "Help me find a product"])
 ```
 
-### 3. Headless mode (no UI)
+### 3. Headless mode
 
 ```swift
 import AgentKitCore
@@ -118,10 +105,10 @@ params.bool("enabled")  // Bool?
 
 ## Tool Confirmation
 
-For actions that shouldn't execute without user approval (transfers, deletions, sends), add a confirmation policy:
+For actions that shouldn't execute without user approval, add a confirmation policy:
 
 ```swift
-// User must tap "Approve" before the tool runs
+/// User must tap "Approve" before the tool runs
 await agent.tools.register(
     name: "deleteAccount",
     description: "Permanently delete the user's account",
@@ -133,7 +120,7 @@ await agent.tools.register(
     return await accountService.delete(params.string("accountId") ?? "")
 }
 
-// Requires Face ID / Touch ID before executing
+// Requires Face ID / Passcode before executing
 await agent.tools.register(
     name: "transferFunds",
     description: "Transfer money between accounts",
@@ -146,7 +133,7 @@ await agent.tools.register(
     return await bank.transfer(...)
 }
 
-// No confirmation needed (default)
+// No confirmation needed
 await agent.tools.register(name: "getBalance", ...) { params in ... }
 ```
 
@@ -193,7 +180,6 @@ AgentChatView(session: session)
 | **Claude** (Anthropic) | `.claude(apiKey:)` | `.sonnet` (Claude Sonnet 4.6) |
 | **OpenAI** | `.openai(apiKey:)` | `.gpt4o` (GPT-4o) |
 | **Apple** (on-device) | `.apple()` | `.general` (no API key needed) |
-| **Custom** | `.custom(adapter)` | — |
 
 ```swift
 // Claude
@@ -202,11 +188,8 @@ let agent = AgentKit(provider: .claude(apiKey: key, model: .opus))
 // OpenAI
 let agent = AgentKit(provider: .openai(apiKey: key, model: .gpt5_4))
 
-// Apple on-device (iOS 26+, no network needed)
+// Apple on-device (iOS 26+, Local LLM)
 let agent = AgentKit(provider: .apple())
-
-// Custom model ID for new releases
-let agent = AgentKit(provider: .claudeCustom(apiKey: key, modelId: "claude-future-model"))
 ```
 
 **Offline fallback** — automatic failover when the primary provider is unreachable:
@@ -223,7 +206,7 @@ let agent = AgentKit(
 
 | Case | API ID | Notes |
 |------|--------|-------|
-| `.opus` | `claude-opus-4-6` | Most intelligent, 1M context |
+| `.opus` | `claude-opus-4-6` | Most intelligent |
 | `.sonnet` | `claude-sonnet-4-6` | Best balance (default) |
 | `.haiku` | `claude-haiku-4-5` | Fastest, 200k context |
 | `.sonnet4_5` | `claude-sonnet-4-5` | Previous gen |
@@ -357,25 +340,11 @@ The `AgentKitDemos/` Xcode project contains 5 complete demo apps showcasing diff
 
 ---
 
-## Architecture
-
-Key design decisions:
-
-- **`AgentSession` lives in Core**, not Chat — headless users never import SwiftUI
-- **`ToolRegistry` and `StateManager` are actors** — thread-safe by construction
-- **`LLMAdapter` is a public protocol** — implement your own for any provider
-- **Tool confirmation gate** — loop suspends via `CheckedContinuation` until user approves
-- **AgentKitChat is optional** — build any UI on top of the `AsyncStream<AgentLoopEvent>`
-
----
-
 ## Requirements
 
 - Swift 5.9+
-- iOS 17+ / macOS 14+ (uses `@Observable`)
+- iOS 17+ / macOS 14+
 - iOS 26+ / macOS 26+ for Apple on-device models
-
-**API key security:** Store keys in the Keychain or environment variables — never hardcode them in source.
 
 ## License
 
