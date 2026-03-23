@@ -38,7 +38,7 @@ struct ShoppingAssistantDemo: View {
         .task {
             if assistant == nil {
                 let provider: LLMProvider = .openai(
-                    apiKey: ProcessInfo.processInfo.environment["OPENAI_API_KEY"] ?? "your-key-here",
+                    apiKey: APIKeys.openai,
                     model: .gpt4o
                 )
                 assistant = ShoppingAssistant(store: store, provider: provider)

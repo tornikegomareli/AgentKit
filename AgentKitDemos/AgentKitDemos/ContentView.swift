@@ -1,66 +1,71 @@
 import SwiftUI
 
-/// Root view — a catalog of AgentKit demos.
 struct ContentView: View {
     var body: some View {
         NavigationStack {
             List {
-                Section {
-                    Text("Explore AgentKit capabilities through interactive demos. Each demo showcases a different integration pattern.")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .listRowBackground(Color.clear)
-                        .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 8, trailing: 0))
-                }
-
-                Section("Drop-in UI") {
-                    DemoRow(
-                        title: "Minimal Chat",
-                        subtitle: "The \"10 lines\" demo — just AgentChatView with zero tools",
-                        icon: "bubble.left.fill",
-                        color: .blue
-                    ) {
-                        MinimalChatDemo()
+                Section("Demos") {
+                    NavigationLink {
+                        VaultBankingDemo()
+                    } label: {
+                        demoCatalogRow(
+                            icon: "building.columns.fill",
+                            color: Color(red: 0.1, green: 0.23, blue: 0.36),
+                            title: "Vault — Banking & Finance",
+                            subtitle: "10 tools: transfers, spending analysis, payees, savings goals"
+                        )
                     }
 
-                    DemoRow(
-                        title: "Shopping Assistant",
-                        subtitle: "Full app with 5 tools: search, cart, orders, product details",
-                        icon: "bag.fill",
-                        color: .indigo
-                    ) {
+                    NavigationLink {
+                        MeridianDocsDemo()
+                    } label: {
+                        demoCatalogRow(
+                            icon: "text.magnifyingglass",
+                            color: Color(red: 0.78, green: 0.58, blue: 0.23),
+                            title: "Meridian — Docs & Knowledge",
+                            subtitle: "9 tools: search, summarize, freshness audit, contradictions"
+                        )
+                    }
+
+                    NavigationLink {
+                        VoltaTasksDemo()
+                    } label: {
+                        demoCatalogRow(
+                            icon: "bolt.fill",
+                            color: Color(red: 0.16, green: 0.16, blue: 0.18),
+                            title: "Volta — Task Management",
+                            subtitle: "9 tools: board, sprint health, dependencies, assignments"
+                        )
+                    }
+
+                    NavigationLink {
+                        LumenEmailDemo()
+                    } label: {
+                        demoCatalogRow(
+                            icon: "tray.fill",
+                            color: Color(red: 0.12, green: 0.44, blue: 0.66),
+                            title: "Lumen — Email & Calendar",
+                            subtitle: "12 tools: triage, draft replies, schedule meetings, labels"
+                        )
+                    }
+
+                    NavigationLink {
                         ShoppingAssistantDemo()
-                            .navigationBarBackButtonHidden(false)
-                    }
-                }
-
-                Section("Custom UI") {
-                    DemoRow(
-                        title: "Code Explainer",
-                        subtitle: "Headless mode — custom UI driven by raw event stream",
-                        icon: "chevron.left.forwardslash.chevron.right",
-                        color: .orange
-                    ) {
-                        CodeExplainerDemo()
-                    }
-                }
-
-                Section("Advanced") {
-                    DemoRow(
-                        title: "Multi-Provider",
-                        subtitle: "Same chat view, switch between OpenAI and Ollama live",
-                        icon: "arrow.triangle.swap",
-                        color: .green
-                    ) {
-                        MultiProviderDemo()
+                    } label: {
+                        demoCatalogRow(
+                            icon: "bag.fill",
+                            color: .indigo,
+                            title: "Shopping Assistant",
+                            subtitle: "5 tools: search, cart, orders, product details"
+                        )
                     }
                 }
 
                 Section {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("Set your API key")
+                        Text("Set your API key in APIKeys.swift")
                             .font(.subheadline.weight(.medium))
-                        Text("Edit Scheme > Run > Environment Variables > OPENAI_API_KEY")
+                        Text("Or set OPENAI_API_KEY env var in scheme")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -70,41 +75,23 @@ struct ContentView: View {
             .navigationTitle("AgentKit Demos")
         }
     }
-}
 
-/// A row in the demo catalog.
-struct DemoRow<Destination: View>: View {
-    let title: String
-    let subtitle: String
-    let icon: String
-    let color: Color
-    @ViewBuilder let destination: () -> Destination
+    private func demoCatalogRow(icon: String, color: Color, title: String, subtitle: String) -> some View {
+        HStack(spacing: 14) {
+            Image(systemName: icon)
+                .font(.title3)
+                .foregroundStyle(.white)
+                .frame(width: 40, height: 40)
+                .background(color, in: RoundedRectangle(cornerRadius: 10))
 
-    var body: some View {
-        NavigationLink {
-            destination()
-        } label: {
-            HStack(spacing: 14) {
-                Image(systemName: icon)
-                    .font(.title3)
-                    .foregroundStyle(.white)
-                    .frame(width: 40, height: 40)
-                    .background(color, in: RoundedRectangle(cornerRadius: 10))
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(title)
-                        .font(.body.weight(.semibold))
-                    Text(subtitle)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(2)
-                }
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.body.weight(.semibold))
+                Text(subtitle)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
-            .padding(.vertical, 4)
         }
+        .padding(.vertical, 4)
     }
-}
-
-#Preview {
-    ContentView()
 }
