@@ -2,10 +2,10 @@
 
 **Give any iOS or macOS app an AI agent in 10 lines of Swift.**
 
-AgentKit is a modular Swift Package that adds an agentic layer to your app — a loop that can reason, call tools, observe state, and respond. It wraps multiple LLM providers behind a single protocol and ships a drop-in chat UI.
+AgentKit is a modular Swift Package that adds an agentic layer to your app — a loop that can reason, call tools, observe state, and respond. It wraps multiple LLM providers behind a single protocol and ships a drop-in chat UI with built-in tool confirmation flows.
 
 [![Swift 5.9+](https://img.shields.io/badge/Swift-5.9+-orange.svg)](https://swift.org)
-[![Platforms](https://img.shields.io/badge/Platforms-iOS%2016%2B%20%7C%20macOS%2013%2B-blue.svg)](https://developer.apple.com)
+[![Platforms](https://img.shields.io/badge/Platforms-iOS%2017%2B%20%7C%20macOS%2014%2B-blue.svg)](https://developer.apple.com)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
 ---
@@ -13,12 +13,14 @@ AgentKit is a modular Swift Package that adds an agentic layer to your app — a
 ## Why AgentKit?
 
 - **10 lines to a working agent** — register tools, pick an LLM, drop in a chat view
-- **Zero lock-in** — swap Claude for GPT-4o for Ollama for Apple on-device. Same code.
-- **6 providers** — Claude, OpenAI, Groq, Ollama, Apple Foundation Models, or bring your own
-- **Type-safe models** — no hardcoded strings. `ModelIdentifier` enums with exact API model IDs
+- **Zero lock-in** — swap Claude for OpenAI for Apple on-device. Same code.
+- **3 providers** — Claude, OpenAI, Apple Foundation Models, or bring your own
+- **Tool confirmation** — built-in approval flow with optional biometric auth for sensitive actions
 - **Modular** — import only what you need. Headless? Skip the UI. Custom UI? Skip the chat view.
 - **Swift-native** — async/await, actors, structured concurrency. No Combine, no callbacks.
 - **Testable** — every component has a mock. No network calls in tests.
+
+---
 
 ## Quick Start
 
@@ -31,7 +33,7 @@ dependencies: [
 ]
 ```
 
-Or in Xcode: File > Add Package Dependencies > paste the URL.
+Or in Xcode: **File > Add Package Dependencies** > paste the URL.
 
 ### 2. Drop-in chat (10 lines)
 
@@ -40,168 +42,51 @@ import AgentKitCore
 import AgentKitProviders
 import AgentKitChat
 
-// 1. Create the agent
-let agent = AgentKit(provider: .claude(apiKey: "sk-ant-..."))
+let agent = AgentKit(provider: .openai(apiKey: "sk-..."))
 
-// 2. Register a tool
 await agent.tools.register(
     name: "getOrderStatus",
     description: "Look up an order by ID",
     parameters: [.string("orderId", description: "The order ID", required: true)]
 ) { params in
-    let id = params["orderId"] as? String ?? ""
+    let id = params.string("orderId") ?? ""
     return await OrderService.status(for: id)
 }
 
-// 3. Show the chat
+// In your SwiftUI view:
 AgentChatView(session: agent.startSession())
     .agentName("Aria")
     .agentAccentColor(.purple)
     .suggestedPrompts(["Track my order", "Help me find a product"])
 ```
 
-### 3. Headless mode (no UI import)
+### 3. Headless mode (no UI)
 
 ```swift
 import AgentKitCore
 import AgentKitProviders
 
-let agent = AgentKit(provider: .openai(apiKey: "sk-..."))
+let agent = AgentKit(provider: .claude(apiKey: "sk-ant-..."))
 let session = agent.startSession()
-session.send("What's the weather?")
+await session.send("What's the weather in Tbilisi?")
 
 for await event in session.events {
     switch event {
-    case .token(let t):          print(t, terminator: "")
-    case .toolCallStarted(let n): print("\n[calling \(n)...]")
-    case .toolCallCompleted:      print("[done]")
-    case .responseComplete(let r): print("\n\(r)")
-    case .error(let e):           print("Error: \(e)")
+    case .token(let t):              print(t, terminator: "")
+    case .toolCallStarted(let name): print("\n[calling \(name)...]")
+    case .toolCallCompleted:         print("[done]")
+    case .responseComplete(let r):   print("\n\(r)")
+    case .error(let e):              print("Error: \(e)")
+    default: break
     }
 }
 ```
 
-## Supported Providers
+---
 
-| Provider | Enum | Default Model | Context Window |
-|---|---|---|---|
-| **Claude** (Anthropic) | `.claude(apiKey:)` | `.sonnet` (Claude Sonnet 4.6) | 1M tokens |
-| **OpenAI** | `.openai(apiKey:)` | `.gpt4o` (GPT-4o) | 128k tokens |
-| **Groq** | `.groq(apiKey:)` | `.llama3_3_70b` | 131k tokens |
-| **Ollama** (local) | `.ollama()` | `.llama3_3` | varies |
-| **Apple** (on-device) | `.apple()` | `.general` | ~4k tokens |
-| **Custom** | `.custom(adapter)` | — | — |
+## Tool Registration
 
-### Type-Safe Model Selection
-
-Every provider has a `ModelIdentifier` enum — no hardcoded strings:
-
-```swift
-// Use the default model
-let agent = AgentKit(provider: .claude(apiKey: key))
-
-// Pick a specific model
-let agent = AgentKit(provider: .claude(apiKey: key, model: .opus))
-let agent = AgentKit(provider: .openai(apiKey: key, model: .gpt5_4))
-let agent = AgentKit(provider: .groq(apiKey: key, model: .llama3_1_8b))
-
-// Apple on-device (no API key needed)
-let agent = AgentKit(provider: .apple())
-
-// Custom model ID for new releases or fine-tunes
-let agent = AgentKit(provider: .claudeCustom(apiKey: key, modelId: "claude-future-model"))
-```
-
-### Available Models
-
-<details>
-<summary><strong>Claude</strong> (ModelIdentifier.Claude)</summary>
-
-| Case | API ID | Notes |
-|---|---|---|
-| `.opus` | `claude-opus-4-6` | Most intelligent, 1M context |
-| `.sonnet` | `claude-sonnet-4-6` | Best speed/intelligence (default) |
-| `.haiku` | `claude-haiku-4-5` | Fastest, 200k context |
-| `.sonnet4_5` | `claude-sonnet-4-5` | Previous gen sonnet |
-| `.opus4_5` | `claude-opus-4-5` | Previous gen opus |
-| `.opus4_1` | `claude-opus-4-1` | Extended thinking |
-| `.sonnet4` | `claude-sonnet-4-0` | Legacy |
-| `.opus4` | `claude-opus-4-0` | Legacy |
-
-</details>
-
-<details>
-<summary><strong>OpenAI</strong> (ModelIdentifier.OpenAI)</summary>
-
-| Case | API ID | Notes |
-|---|---|---|
-| `.gpt5_4` | `gpt-5.4` | Flagship, 1M context |
-| `.gpt5_4Mini` | `gpt-5.4-mini` | Faster, cheaper, 400k |
-| `.gpt5_4Nano` | `gpt-5.4-nano` | Cheapest, 400k |
-| `.gpt4o` | `gpt-4o` | Previous flagship (default) |
-| `.gpt4oMini` | `gpt-4o-mini` | Fast and affordable |
-| `.gpt4Turbo` | `gpt-4-turbo` | Legacy |
-
-</details>
-
-<details>
-<summary><strong>Groq</strong> (ModelIdentifier.Groq)</summary>
-
-| Case | API ID | Notes |
-|---|---|---|
-| `.llama3_3_70b` | `llama-3.3-70b-versatile` | Default, 131k |
-| `.llama3_1_8b` | `llama-3.1-8b-instant` | Fastest, 131k |
-| `.gptOss120b` | `openai/gpt-oss-120b` | Large open model |
-| `.gptOss20b` | `openai/gpt-oss-20b` | Smaller open model |
-| `.llama4Scout` | `meta-llama/llama-4-scout-17b-16e-instruct` | Preview |
-| `.qwen3_32b` | `qwen/qwen3-32b` | Preview |
-
-</details>
-
-<details>
-<summary><strong>Apple</strong> (ModelIdentifier.Apple)</summary>
-
-| Case | Config | Notes |
-|---|---|---|
-| `.general` | Standard guardrails | Default, ~4k context |
-| `.generalPermissive` | Relaxed guardrails | For content transformation |
-
-Requires iOS 26+ / macOS 26+. No API key. Fully on-device.
-
-</details>
-
-### Provider Switching & Offline Fallback
-
-```swift
-// Cloud primary, on-device fallback (airplane mode resilience)
-let agent = AgentKit(
-    provider: .claude(apiKey: key),
-    fallbackProvider: .apple()
-)
-
-// Local primary, cloud fallback
-let agent = AgentKit(
-    provider: .ollama(model: .mistral),
-    fallbackProvider: .openai(apiKey: key)
-)
-```
-
-## Module Structure
-
-Import only what you need:
-
-| Module | Import | What you get |
-|---|---|---|
-| **AgentKitCore** | `import AgentKitCore` | Agent loop, tool registry, state, session, protocols. Zero dependencies. |
-| **AgentKitProviders** | `import AgentKitProviders` | Claude, OpenAI, Groq, Ollama, Apple adapters + `LLMProvider` enum. |
-| **AgentKitChat** | `import AgentKitChat` | Drop-in `AgentChatView` + theming modifiers. |
-| **AgentKitMCP** | `import AgentKitMCP` | MCP bundle system for exposing system APIs as tools. |
-| **AgentKitDevTools** | `import AgentKitDevTools` | Token counter, event recorder for debugging. |
-| **AgentKitTestSupport** | `import AgentKitTestSupport` | `MockLLMAdapter`, `MockAgentStateProvider`, `MockAgentSession`. |
-
-## Tools
-
-Tools are functions your agent can call. Define them with a name, description, parameters, and a handler:
+Tools are functions your agent can call. Define them with a name, description, typed parameters, and a handler:
 
 ```swift
 await agent.tools.register(
@@ -212,17 +97,162 @@ await agent.tools.register(
         .int("limit", description: "Max results to return", required: false)
     ]
 ) { params in
-    let query = params["query"] as? String ?? ""
-    let limit = params["limit"] as? Int ?? 10
+    let query = params.string("query") ?? ""
+    let limit = params.int("limit") ?? 10
     return await catalog.search(query, limit: limit)
 }
 ```
 
-The description is passed directly to the LLM. Write it like a docstring for a colleague — quality matters.
+The `description` is passed directly to the LLM — write it like a docstring for a colleague. Quality matters.
+
+**Typed accessors** on parameters reduce casting noise:
+
+```swift
+params.string("name")   // String?
+params.int("count")     // Int?
+params.double("amount") // Double?
+params.bool("enabled")  // Bool?
+```
+
+---
+
+## Tool Confirmation
+
+For actions that shouldn't execute without user approval (transfers, deletions, sends), add a confirmation policy:
+
+```swift
+// User must tap "Approve" before the tool runs
+await agent.tools.register(
+    name: "deleteAccount",
+    description: "Permanently delete the user's account",
+    parameters: [...],
+    confirmation: .required({ params in
+        "Delete account \(params.string("accountId") ?? "")? This cannot be undone."
+    })
+) { params in
+    return await accountService.delete(params.string("accountId") ?? "")
+}
+
+// Requires Face ID / Touch ID before executing
+await agent.tools.register(
+    name: "transferFunds",
+    description: "Transfer money between accounts",
+    parameters: [...],
+    confirmation: .biometric({ params in
+        let amount = params.double("amount") ?? 0
+        return "Transfer $\(String(format: "%.2f", amount))?"
+    })
+) { params in
+    return await bank.transfer(...)
+}
+
+// No confirmation needed (default)
+await agent.tools.register(name: "getBalance", ...) { params in ... }
+```
+
+**Three tiers:**
+
+| Policy | Behavior |
+|--------|----------|
+| `.none` | Execute immediately (default) |
+| `.required` | Show confirmation sheet, user taps Approve |
+| `.biometric` | Confirmation sheet + Face ID / Touch ID / passcode |
+
+The confirmation sheet is built into `AgentChatView`. For headless usage, handle the event directly:
+
+```swift
+for await event in session.events {
+    case .toolConfirmationRequired(let pending):
+        if userApproved {
+            session.approve(pending.id)
+        } else {
+            session.reject(pending.id)
+        }
+}
+```
+
+**Custom confirmation UI** — replace the default sheet with your own:
+
+```swift
+AgentChatView(session: session)
+    .confirmationView { confirmation, approve, reject in
+        MyBankingConfirmationView(
+            action: confirmation.displayMessage ?? confirmation.toolName,
+            onApprove: approve,
+            onReject: reject
+        )
+    }
+```
+
+---
+
+## Providers
+
+| Provider | Enum | Default Model |
+|----------|------|---------------|
+| **Claude** (Anthropic) | `.claude(apiKey:)` | `.sonnet` (Claude Sonnet 4.6) |
+| **OpenAI** | `.openai(apiKey:)` | `.gpt4o` (GPT-4o) |
+| **Apple** (on-device) | `.apple()` | `.general` (no API key needed) |
+| **Custom** | `.custom(adapter)` | — |
+
+```swift
+// Claude
+let agent = AgentKit(provider: .claude(apiKey: key, model: .opus))
+
+// OpenAI
+let agent = AgentKit(provider: .openai(apiKey: key, model: .gpt5_4))
+
+// Apple on-device (iOS 26+, no network needed)
+let agent = AgentKit(provider: .apple())
+
+// Custom model ID for new releases
+let agent = AgentKit(provider: .claudeCustom(apiKey: key, modelId: "claude-future-model"))
+```
+
+**Offline fallback** — automatic failover when the primary provider is unreachable:
+
+```swift
+let agent = AgentKit(
+    provider: .claude(apiKey: key),
+    fallbackProvider: .apple()
+)
+```
+
+<details>
+<summary><strong>All Claude models</strong></summary>
+
+| Case | API ID | Notes |
+|------|--------|-------|
+| `.opus` | `claude-opus-4-6` | Most intelligent, 1M context |
+| `.sonnet` | `claude-sonnet-4-6` | Best balance (default) |
+| `.haiku` | `claude-haiku-4-5` | Fastest, 200k context |
+| `.sonnet4_5` | `claude-sonnet-4-5` | Previous gen |
+| `.opus4_5` | `claude-opus-4-5` | Previous gen |
+| `.opus4_1` | `claude-opus-4-1` | Extended thinking |
+| `.sonnet4` | `claude-sonnet-4-0` | Legacy |
+| `.opus4` | `claude-opus-4-0` | Legacy |
+
+</details>
+
+<details>
+<summary><strong>All OpenAI models</strong></summary>
+
+| Case | API ID | Notes |
+|------|--------|-------|
+| `.gpt5_4` | `gpt-5.4` | Flagship, 1M context |
+| `.gpt5_4Mini` | `gpt-5.4-mini` | Faster, 400k |
+| `.gpt5_4Nano` | `gpt-5.4-nano` | Cheapest, 400k |
+| `.gpt4o` | `gpt-4o` | Previous flagship (default) |
+| `.gpt4oMini` | `gpt-4o-mini` | Fast and affordable |
+| `.gpt4Turbo` | `gpt-4-turbo` | Legacy |
+
+</details>
+
+---
 
 ## App State
 
-Give the agent context about your app:
+Give the agent real-time context about your app:
 
 ```swift
 class MyStateProvider: AgentStateProvider {
@@ -235,24 +265,54 @@ class MyStateProvider: AgentStateProvider {
     }
 
     func subscribe(onChange: @escaping @Sendable (AgentContext) -> Void) {
-        // Push when something significant changes
+        // Push state changes to the agent
     }
 }
 
 await agent.state.setProvider(MyStateProvider())
 ```
 
-## Theming the Chat View
+---
+
+## Chat View Theming
 
 ```swift
 AgentChatView(session: session)
-    .agentName("Aria")
-    .agentAccentColor(.purple)
-    .agentAvatar("aria-avatar")  // from asset catalog
-    .suggestedPrompts(["What can you do?", "Track my order"])
-    .inputPlaceholder("Ask Aria...")
-    .showToolCalls(false)        // hide tool call details
+    .agentName("Clerk")
+    .agentAccentColor(.blue)
+    .agentAvatar("clerk-avatar")          // from asset catalog
+    .suggestedPrompts(["Check balance", "Transfer funds"])
+    .inputPlaceholder("Ask Clerk...")
+    .showToolCalls(true)                  // show tool execution inline
+    .showTypingIndicator(true)            // show typing dots
 ```
+
+---
+
+## Module Structure
+
+Import only what you need:
+
+| Module | What you get |
+|--------|-------------|
+| **AgentKitCore** | Agent loop, tool registry, state, session, protocols. Zero dependencies. |
+| **AgentKitProviders** | Claude, OpenAI, Apple adapters + `LLMProvider` enum. |
+| **AgentKitChat** | Drop-in `AgentChatView`, theming modifiers, confirmation sheet. |
+| **AgentKitMCP** | MCP client + system API tool bundles. |
+| **AgentKitDevTools** | Token counter, event recorder for debugging. |
+| **AgentKitTestSupport** | `MockLLMAdapter`, `MockAgentStateProvider` for tests. |
+
+```
+AgentKitCore              (zero external dependencies)
+    |
+    +-- AgentKitProviders    (Core + SwiftAnthropic + MacPaw/OpenAI)
+    +-- AgentKitChat         (Core + SwiftUI + LocalAuthentication)
+    +-- AgentKitMCP          (Core only)
+    +-- AgentKitDevTools     (Core only)
+    +-- AgentKitTestSupport  (Core only)
+```
+
+---
 
 ## Testing
 
@@ -268,44 +328,54 @@ mock.responses = [
 ]
 
 let agent = AgentKit(adapter: mock)
-// ... test your tool integration
-```
+let session = agent.startSession()
+await session.send("What's the weather?")
 
-Run the test suite:
+// Assert tool was called, response is correct, etc.
+```
 
 ```bash
-swift test                                    # All 60 tests
-swift test --filter AgentKitCoreTests         # Core only
-swift test --filter AgentKitProviderTests     # Provider adapters
-swift test --filter AgentKitChatTests         # Chat UI
+swift test                               # All tests
+swift test --filter AgentKitCoreTests    # Core only
+swift test --filter AgentKitProviderTests # Providers
+swift test --filter AgentKitChatTests    # Chat UI
 ```
+
+---
+
+## Demo Apps
+
+The `AgentKitDemos/` Xcode project contains 5 complete demo apps showcasing different integration patterns:
+
+| Demo | Agent | Tools | What it shows |
+|------|-------|-------|---------------|
+| **Vault** (Banking) | Clerk | 10 | Transfers, spending analysis, savings goals, biometric confirmation |
+| **Meridian** (Docs) | Scribe | 9 | Knowledge search, freshness audit, contradiction detection |
+| **Volta** (Tasks) | Forge | 9 | Kanban board, sprint health, dependency analysis |
+| **Lumen** (Email) | Courier | 12 | Inbox triage, reply drafts, calendar scheduling |
+| **Shopping** | ShopBot | 5 | Product search, cart, order tracking |
+
+---
 
 ## Architecture
-
-```
-AgentKitCore            (zero external dependencies)
-    |
-    +-- AgentKitProviders   (Core + SwiftAnthropic + MacPaw/OpenAI)
-    +-- AgentKitChat        (Core + SwiftUI)
-    +-- AgentKitMCP         (Core only)
-    +-- AgentKitDevTools    (Core only)
-    +-- AgentKitTestSupport (Core only)
-```
 
 Key design decisions:
 
 - **`AgentSession` lives in Core**, not Chat — headless users never import SwiftUI
 - **`ToolRegistry` and `StateManager` are actors** — thread-safe by construction
 - **`LLMAdapter` is a public protocol** — implement your own for any provider
-- **`ModelIdentifier` enums** — type-safe model selection, no hardcoded strings
-- **AgentKitChat is optional** — build any UI you want on top of the event stream
+- **Tool confirmation gate** — loop suspends via `CheckedContinuation` until user approves
+- **AgentKitChat is optional** — build any UI on top of the `AsyncStream<AgentLoopEvent>`
+
+---
 
 ## Requirements
 
 - Swift 5.9+
-- iOS 16+ / macOS 13+
-- iOS 17+ / macOS 14+ for `AgentChatView` (uses `@Observable`)
-- iOS 26+ / macOS 26+ for Apple on-device models (uses `FoundationModels`)
+- iOS 17+ / macOS 14+ (uses `@Observable`)
+- iOS 26+ / macOS 26+ for Apple on-device models
+
+**API key security:** Store keys in the Keychain or environment variables — never hardcode them in source.
 
 ## License
 
@@ -313,12 +383,12 @@ MIT. See [LICENSE](LICENSE) for details.
 
 ## Contributing
 
-Contributions welcome. Please:
+Contributions welcome:
 
 1. Fork the repo
 2. Create a feature branch
-3. Ensure `swift build` produces zero warnings
-4. Ensure `swift test` passes all tests
+3. `swift build` must produce zero warnings
+4. `swift test` must pass all tests
 5. Open a PR with a clear description
 
 ---
