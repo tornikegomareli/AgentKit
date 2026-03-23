@@ -2,7 +2,7 @@
 
 **Give any iOS or macOS app an AI agent in few lines of Swift.**
 
-AgentKit is a modular Swift Package that adds an agentic layer to your app — a loop that can reason, call tools, observe state, and respond. It wraps multiple LLM providers behind a single protocol and ships a drop-in agentic UI with built-in tool confirmation flows.
+AgentKit is a modular Swift Package that adds an agentic layer to your app, a loop that can reason, call tools, observe state, and respond. It wraps multiple LLM providers behind a single protocol and ships a drop-in agentic UI with built-in tool confirmation flows.
 
 [![Swift 5.9+](https://img.shields.io/badge/Swift-5.9+-orange.svg)](https://swift.org)
 [![Platforms](https://img.shields.io/badge/Platforms-iOS%2017%2B%20%7C%20macOS%2014%2B-blue.svg)](https://developer.apple.com)
