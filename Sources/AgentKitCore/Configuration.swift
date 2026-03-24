@@ -6,10 +6,13 @@ import Foundation
 ///
 /// ## Example
 /// ```swift
-/// let config = AgentKit.Configuration(
-///     maxIterations: 15
+/// let agent = AgentKit(
+///     provider: .claude(apiKey: "sk-ant-..."),
+///     configuration: .init(
+///         maxIterations: 15,
+///         systemPrompt: "You are a helpful assistant."
+///     )
 /// )
-/// let agent = AgentKit(llm: .claude(apiKey: "..."), configuration: config)
 /// ```
 public struct Configuration: Sendable {
     /// Maximum number of LLM round-trips per user message.

@@ -29,7 +29,10 @@ import AgentKitCore
 import AgentKitProviders
 import AgentKitChat
 
-let agent = AgentKit(provider: .openai(apiKey: "sk-..."))
+let agent = AgentKit(
+    provider: .openai(apiKey: "sk-..."),
+    configuration: .init(systemPrompt: "You are Aria, a friendly shopping assistant. Be concise.")
+)
 
 await agent.tools.register(
     name: "getOrderStatus",
@@ -68,6 +71,28 @@ for await event in session.events {
     }
 }
 ```
+
+---
+
+## System Prompt
+
+Set the agent's personality, constraints, and instructions via `Configuration.systemPrompt`:
+
+```swift
+let agent = AgentKit(
+    provider: .claude(apiKey: key),
+    configuration: .init(
+        systemPrompt: """
+        You are Clerk, a banking assistant for Vault.
+        - Always confirm before making transfers.
+        - Never reveal internal account IDs.
+        - Be concise and professional.
+        """
+    )
+)
+```
+
+The system prompt is sent to the LLM on every turn. If you also use an `AgentStateProvider` that returns a `systemPrompt` in its `AgentContext`, the context's prompt takes precedence — this lets you swap prompts dynamically based on app state.
 
 ---
 
